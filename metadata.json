@@ -1,0 +1,6 @@
+{
+  "name": "내 방학을 맞춰봐! - 방학 키워드 스피드 퀴즈",
+  "description": "방학 동안의 추억을 키워드로 제출하고 전자칠판에서 함께 맞히는 실시간 교실 스피드 퀴즈 웹앱",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
