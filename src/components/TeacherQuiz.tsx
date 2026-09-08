@@ -365,11 +365,15 @@ export function TeacherQuiz({
 
           {/* Large Keyword Cards */}
           {currentQuiz && (
-            <div className="flex flex-wrap justify-center gap-4 sm:gap-6 mb-8 sm:mb-12 max-w-5xl">
+            <div className="flex flex-wrap justify-center gap-3 sm:gap-6 mb-8 sm:mb-12 max-w-5xl">
               {currentQuiz.keywords.map((keyword, index) => (
                 <div
                   key={index}
-                  className="bg-white border-4 border-[#BAE6FD] text-[#0369A1] text-3xl sm:text-5xl lg:text-6xl font-black px-6 sm:px-10 py-4 sm:py-8 rounded-[24px] sm:rounded-[32px] shadow-[0_12px_0_0_#BAE6FD] hover:scale-105 transition-transform"
+                  className={`bg-white border-4 border-[#BAE6FD] text-[#0369A1] font-black rounded-[20px] sm:rounded-[32px] shadow-[0_10px_0_0_#BAE6FD] hover:scale-105 transition-transform ${
+                    currentQuiz.keywords.length > 4
+                      ? 'text-xl sm:text-3xl lg:text-4xl px-4 sm:px-7 py-3 sm:py-5'
+                      : 'text-2xl sm:text-5xl lg:text-6xl px-5 sm:px-10 py-3.5 sm:py-8'
+                  }`}
                 >
                   # {keyword}
                 </div>

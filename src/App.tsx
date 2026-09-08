@@ -19,6 +19,7 @@ import { toggleMute, getMuteState } from './lib/sound';
 import { Users, Presentation, Database, HelpCircle, Snowflake, Sun, GraduationCap } from 'lucide-react';
 
 const SEASON_STORAGE_KEY = 'vacation_quiz_season_v1';
+const KEYWORD_COUNT_STORAGE_KEY = 'vacation_quiz_keyword_count_v1';
 
 export default function App() {
   // Detect role from URL query (e.g. ?role=student) or default to teacher
@@ -45,6 +46,25 @@ export default function App() {
       }
     }
     return 'summer';
+  });
+
+  // Adjustable number of keywords/questions (문항 수 조절: 기본 3~4개, 1~6개 조절 가능)
+  const [keywordCount, setKeywordCount] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const queryCount = parseInt(params.get('count') || params.get('keywords') || '', 10);
+      if (queryCount >= 1 && queryCount <= 8) {
+        return queryCount;
+      }
+      const saved = localStorage.getItem(KEYWORD_COUNT_STORAGE_KEY);
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (parsed >= 1 && parsed <= 8) {
+          return parsed;
+        }
+      }
+    }
+    return 3;
   });
 
   const [teacherScreen, setTeacherScreen] = useState<'lobby' | 'quiz'>('lobby');
@@ -99,6 +119,16 @@ export default function App() {
         url.searchParams.delete('season');
       }
       window.history.pushState({}, '', url.toString());
+    }
+  };
+
+  const handleKeywordCountChange = (newCount: number) => {
+    const clamped = Math.max(1, Math.min(8, newCount));
+    setKeywordCount(clamped);
+    try {
+      localStorage.setItem(KEYWORD_COUNT_STORAGE_KEY, String(clamped));
+    } catch {
+      // ignore
     }
   };
 
@@ -307,6 +337,8 @@ export default function App() {
             onBackToTeacher={() => handleRoleChange('teacher')}
             season={season}
             onToggleSeason={handleSeasonChange}
+            initialKeywordCount={keywordCount}
+            onKeywordCountChange={handleKeywordCountChange}
           />
         ) : teacherScreen === 'lobby' ? (
           <TeacherLobby
@@ -319,6 +351,8 @@ export default function App() {
             isSupabaseConnected={isSupabaseConfigured}
             season={season}
             onToggleSeason={handleSeasonChange}
+            keywordCount={keywordCount}
+            onKeywordCountChange={handleKeywordCountChange}
           />
         ) : (
           <TeacherQuiz

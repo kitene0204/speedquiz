@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Sparkles, CheckCircle2, Send, Edit3, Tag, Snowflake, Sun, GraduationCap } from 'lucide-react';
+import { Sparkles, CheckCircle2, Send, Edit3, Tag, Snowflake, Sun, GraduationCap, Plus, Minus, Trash2, Sliders } from 'lucide-react';
 import { submitQuizResponse } from '../lib/supabase';
 import { playPopSound } from '../lib/sound';
 import { VacationSeason } from '../types';
@@ -57,35 +57,134 @@ interface StudentFormProps {
   onBackToTeacher?: () => void;
   season?: VacationSeason;
   onToggleSeason?: (newSeason: VacationSeason) => void;
+  initialKeywordCount?: number;
+  onKeywordCountChange?: (count: number) => void;
 }
 
-export function StudentForm({ onBackToTeacher, season = 'summer', onToggleSeason }: StudentFormProps) {
+export function StudentForm({ 
+  onBackToTeacher, 
+  season = 'summer', 
+  onToggleSeason,
+  initialKeywordCount = 3,
+  onKeywordCountChange
+}: StudentFormProps) {
   const isWinter = season === 'winter';
   const isTraining = season === 'training';
   const popularTags = isTraining ? TEACHER_TRAINING_TAGS : isWinter ? WINTER_TAGS : SUMMER_TAGS;
 
+  // Determine starting question/keyword count from URL query (?count= or ?keywords=), prop, or fallback 3
+  const [keywords, setKeywords] = useState<string[]>(() => {
+    let count = initialKeywordCount;
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const qCount = parseInt(params.get('count') || params.get('keywords') || '', 10);
+      if (qCount >= 1 && qCount <= 8) {
+        count = qCount;
+      }
+    }
+    const safeCount = Math.max(1, Math.min(8, count || 3));
+    return Array.from({ length: safeCount }, () => '');
+  });
+
   const [name, setName] = useState('');
-  const [keyword1, setKeyword1] = useState('');
-  const [keyword2, setKeyword2] = useState('');
-  const [keyword3, setKeyword3] = useState('');
-  const [keyword4, setKeyword4] = useState('');
-  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submittedData, setSubmittedData] = useState<{ name: string; keywords: string[] } | null>(null);
   const [errorMsg, setErrorMsg] = useState('');
 
+  const handleKeywordChange = (index: number, value: string) => {
+    setKeywords(prev => {
+      const next = [...prev];
+      next[index] = value;
+      return next;
+    });
+  };
+
+  const handleSetCount = (newCount: number) => {
+    const safeCount = Math.max(1, Math.min(8, newCount));
+    playPopSound();
+    setKeywords(prev => {
+      if (prev.length === safeCount) return prev;
+      if (prev.length < safeCount) {
+        const added = Array.from({ length: safeCount - prev.length }, () => '');
+        return [...prev, ...added];
+      }
+      return prev.slice(0, safeCount);
+    });
+    if (onKeywordCountChange) {
+      onKeywordCountChange(safeCount);
+    }
+  };
+
+  const handleAddKeywordSlot = () => {
+    if (keywords.length >= 8) return;
+    playPopSound();
+    setKeywords(prev => [...prev, '']);
+    if (onKeywordCountChange) {
+      onKeywordCountChange(keywords.length + 1);
+    }
+  };
+
+  const handleRemoveKeywordSlot = (index: number) => {
+    if (keywords.length <= 1) return;
+    playPopSound();
+    setKeywords(prev => prev.filter((_, i) => i !== index));
+    if (onKeywordCountChange) {
+      onKeywordCountChange(keywords.length - 1);
+    }
+  };
+
+  const getPlaceholder = (idx: number) => {
+    if (isTraining) {
+      const placeholders = [
+        '예: 주말 10km 마라톤 완주',
+        '예: 1일 3아메리카노 수혈',
+        '예: 베란다 방울토마토 수확',
+        '예: 생성형 AI 수업 적용',
+        '예: 닌텐도 젤다 엔딩 봄',
+        '예: 직무연수 60시간 이수',
+      ];
+      return placeholders[idx % placeholders.length];
+    }
+    if (isWinter) {
+      const placeholders = [
+        '예: 비발디파크 눈썰매 타기',
+        '예: 슈크림 붕어빵 5개 순삭',
+        '예: 집 앞 눈사람 만들기',
+        '예: 전기장판에서 귤 까먹기',
+        '예: 밤새 마인크래프트 건축',
+        '예: 할머니댁 따뜻한 온돌방',
+      ];
+      return placeholders[idx % placeholders.length];
+    }
+    const placeholders = [
+      '예: 강원도 계곡 물놀이',
+      '예: 마라탕 2단계 완탕',
+      '예: 12시까지 늦잠 꿀잠',
+      '예: 엔트리 점프 게임 개발',
+      '예: 제주도 비행기 여행',
+      '예: 친구들과 복숭아 빙수',
+    ];
+    return placeholders[idx % placeholders.length];
+  };
+
   const handleAddTag = (tagWithEmoji: string) => {
     // strip leading emoji
     const cleanText = tagWithEmoji.replace(/^[^\s]+\s*/, '');
-    if (!keyword1.trim()) {
-      setKeyword1(cleanText);
-    } else if (!keyword2.trim()) {
-      setKeyword2(cleanText);
-    } else if (!keyword3.trim()) {
-      setKeyword3(cleanText);
-    } else if (!keyword4.trim()) {
-      setKeyword4(cleanText);
+    
+    // Find first empty slot
+    const emptyIndex = keywords.findIndex(k => !k.trim());
+    if (emptyIndex !== -1) {
+      handleKeywordChange(emptyIndex, cleanText);
+    } else if (keywords.length < 8) {
+      // Automatically add new slot if all filled
+      setKeywords(prev => [...prev, cleanText]);
+      if (onKeywordCountChange) {
+        onKeywordCountChange(keywords.length + 1);
+      }
+    } else {
+      // Replace last slot if at max
+      handleKeywordChange(keywords.length - 1, cleanText);
     }
     playPopSound();
   };
@@ -94,7 +193,7 @@ export function StudentForm({ onBackToTeacher, season = 'summer', onToggleSeason
     e.preventDefault();
     setErrorMsg('');
 
-    const rawKeywords = [keyword1, keyword2, keyword3, keyword4]
+    const rawKeywords = keywords
       .map(k => k.trim())
       .filter(k => k.length > 0);
 
@@ -103,11 +202,11 @@ export function StudentForm({ onBackToTeacher, season = 'summer', onToggleSeason
       return;
     }
 
-    if (rawKeywords.length < 2) {
+    if (rawKeywords.length === 0) {
       setErrorMsg(
         isTraining
-          ? '최근 경험 키워드를 최소 2개 이상(권장 3~4개) 입력해주세요!'
-          : `${isWinter ? '겨울방학' : '방학'} 키워드를 최소 2개 이상(권장 3~4개) 입력해주세요!`
+          ? '최근 경험 키워드를 최소 1개 이상 입력해주세요!'
+          : `${isWinter ? '겨울방학' : '방학'} 키워드를 최소 1개 이상 입력해주세요!`
       );
       return;
     }
@@ -134,10 +233,7 @@ export function StudentForm({ onBackToTeacher, season = 'summer', onToggleSeason
 
   const handleResetForNew = () => {
     setName('');
-    setKeyword1('');
-    setKeyword2('');
-    setKeyword3('');
-    setKeyword4('');
+    setKeywords(Array.from({ length: keywords.length }, () => ''));
     setIsSubmitted(false);
     setSubmittedData(null);
   };
@@ -214,8 +310,8 @@ export function StudentForm({ onBackToTeacher, season = 'summer', onToggleSeason
           </h1>
           <p className="text-xs sm:text-sm font-bold text-[#0369A1]/70 mt-2 max-w-md mx-auto">
             {isTraining
-              ? '최근 경험한 특별한 일, 취미, 교실 에피소드, 여행 키워드를 2~4개 적어보세요. 동료 선생님들이 키워드만 보고 누구의 이야기인지 맞힐 거예요!'
-              : `나의 신났던 ${isWinter ? '겨울방학' : '방학'} 키워드를 2~4개 적어보세요. 친구들이 키워드만 보고 누구의 이야기인지 맞힐 거예요!`}
+              ? '최근 경험한 특별한 일, 취미, 교실 에피소드, 여행 키워드를 적어보세요. 동료 선생님들이 키워드만 보고 누구의 이야기인지 맞힐 거예요!'
+              : `나의 신났던 ${isWinter ? '겨울방학' : '방학'} 키워드를 적어보세요. 친구들이 키워드만 보고 누구의 이야기인지 맞힐 거예요!`}
           </p>
         </div>
 
@@ -319,70 +415,111 @@ export function StudentForm({ onBackToTeacher, season = 'summer', onToggleSeason
                 </p>
               </div>
 
-              {/* Keywords Fields */}
+              {/* Keywords Fields (Dynamic & User-Adjustable) */}
               <div className="space-y-3">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <label className="block text-sm sm:text-base font-black text-[#0369A1] flex items-center gap-1.5">
                     <span>
                       {isTraining 
-                        ? '2. 나의 최근 경험 키워드 (최소 2개, 권장 3~4개)' 
-                        : `2. 나의 ${isWinter ? '겨울방학' : '방학'} 한 줄 키워드 (최소 2개, 권장 3~4개)`}
+                        ? `2. 나의 최근 경험 키워드 (${keywords.length}개 문항)` 
+                        : `2. 나의 ${isWinter ? '겨울방학' : '방학'} 한 줄 키워드 (${keywords.length}개 문항)`}
                     </span>
                     <span className="text-rose-500">*</span>
                   </label>
+
+                  {/* Stepper controller */}
+                  <div className="flex items-center gap-1.5 bg-[#F0F9FF] px-2 py-1 rounded-xl border-2 border-[#BAE6FD] shadow-2xs">
+                    <span className="text-xs font-bold text-slate-500 mr-1">문항 수:</span>
+                    <button
+                      type="button"
+                      onClick={() => handleSetCount(keywords.length - 1)}
+                      disabled={keywords.length <= 1}
+                      className="w-6 h-6 rounded-lg bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-30 disabled:pointer-events-none font-black flex items-center justify-center text-xs cursor-pointer border border-slate-200 active:scale-95"
+                      title="문항 수 1개 줄이기"
+                    >
+                      <Minus className="w-3 h-3" />
+                    </button>
+                    <span className="text-xs font-black text-[#0369A1] px-1 min-w-[20px] text-center">
+                      {keywords.length}개
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleSetCount(keywords.length + 1)}
+                      disabled={keywords.length >= 8}
+                      className="w-6 h-6 rounded-lg bg-white hover:bg-slate-50 text-slate-700 disabled:opacity-30 disabled:pointer-events-none font-black flex items-center justify-center text-xs cursor-pointer border border-slate-200 active:scale-95"
+                      title="문항 수 1개 늘리기"
+                    >
+                      <Plus className="w-3 h-3" />
+                    </button>
+                  </div>
                 </div>
 
+                {/* Quick Presets Bar */}
+                <div className="flex flex-wrap items-center gap-1.5 pb-1">
+                  <span className="text-xs font-bold text-slate-500">빠른 조절:</span>
+                  {[1, 2, 3, 4, 5, 6].map((num) => (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => handleSetCount(num)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all border cursor-pointer ${
+                        keywords.length === num
+                          ? isTraining
+                            ? 'bg-purple-600 text-white border-purple-700 shadow-xs'
+                            : 'bg-[#0EA5E9] text-white border-[#0284C7] shadow-xs'
+                          : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      {num}개 {num === 3 ? '✨' : ''}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Dynamic Inputs Grid */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-black text-slate-500 mb-1 block">키워드 1 (필수)</label>
-                    <input
-                      id="keyword-input-1"
-                      type="text"
-                      required
-                      placeholder={isTraining ? "예: 주말 10km 마라톤 완주" : isWinter ? "예: 비발디파크 눈썰매" : "예: 강원도 계곡 물놀이"}
-                      value={keyword1}
-                      onChange={(e) => setKeyword1(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl bg-[#F0F9FF] border-2 border-[#BAE6FD] text-sm font-bold text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:border-[#0EA5E9] focus:bg-white transition-all"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-black text-slate-500 mb-1 block">키워드 2 (필수)</label>
-                    <input
-                      id="keyword-input-2"
-                      type="text"
-                      required
-                      placeholder={isTraining ? "예: 1일 3아메리카노 필수" : isWinter ? "예: 슈크림 붕어빵 5개" : "예: 마라탕 2단계"}
-                      value={keyword2}
-                      onChange={(e) => setKeyword2(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl bg-[#F0F9FF] border-2 border-[#BAE6FD] text-sm font-bold text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:border-[#0EA5E9] focus:bg-white transition-all"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-black text-slate-500 mb-1 block">키워드 3 (선택)</label>
-                    <input
-                      id="keyword-input-3"
-                      type="text"
-                      placeholder={isTraining ? "예: 베란다 방울토마토 수확" : isWinter ? "예: 집 앞 눈사람 만들기" : "예: 12시까지 늦잠"}
-                      value={keyword3}
-                      onChange={(e) => setKeyword3(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl bg-[#F0F9FF] border-2 border-[#BAE6FD] text-sm font-bold text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:border-[#0EA5E9] focus:bg-white transition-all"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-black text-slate-500 mb-1 block">키워드 4 (선택)</label>
-                    <input
-                      id="keyword-input-4"
-                      type="text"
-                      placeholder={isTraining ? "예: 생성형 AI 수업 적용" : isWinter ? "예: 전기장판에서 귤 까먹기" : "예: 엔트리 게임 개발"}
-                      value={keyword4}
-                      onChange={(e) => setKeyword4(e.target.value)}
-                      className="w-full px-4 py-3 rounded-xl bg-[#F0F9FF] border-2 border-[#BAE6FD] text-sm font-bold text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:border-[#0EA5E9] focus:bg-white transition-all"
-                    />
-                  </div>
+                  {keywords.map((kw, idx) => (
+                    <div key={idx} className="space-y-1">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-black text-slate-500 flex items-center gap-1">
+                          <span>문항 {idx + 1} (키워드 {idx + 1})</span>
+                          {idx === 0 && <span className="text-rose-500 font-bold">*</span>}
+                        </label>
+                        {keywords.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveKeywordSlot(idx)}
+                            className="text-xs text-slate-400 hover:text-rose-500 flex items-center gap-0.5 font-bold cursor-pointer transition-colors"
+                            title="이 문항 삭제"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                            <span>삭제</span>
+                          </button>
+                        )}
+                      </div>
+                      <input
+                        id={`keyword-input-${idx + 1}`}
+                        type="text"
+                        required={idx === 0}
+                        placeholder={getPlaceholder(idx)}
+                        value={kw}
+                        onChange={(e) => handleKeywordChange(idx, e.target.value)}
+                        className="w-full px-4 py-3 rounded-xl bg-[#F0F9FF] border-2 border-[#BAE6FD] text-sm font-bold text-slate-800 placeholder:text-slate-400 focus:outline-hidden focus:border-[#0EA5E9] focus:bg-white transition-all shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)]"
+                      />
+                    </div>
+                  ))}
                 </div>
+
+                {/* Add Keyword Button */}
+                {keywords.length < 8 && (
+                  <button
+                    type="button"
+                    onClick={handleAddKeywordSlot}
+                    className="w-full py-2.5 px-4 rounded-xl border-2 border-dashed border-[#BAE6FD] hover:border-[#0EA5E9] bg-white hover:bg-sky-50/60 text-[#0369A1] font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>문항 1개 더 추가하기 ({keywords.length}/8)</span>
+                  </button>
+                )}
               </div>
 
               {/* Recommended Popular Tags */}

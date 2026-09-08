@@ -17,7 +17,10 @@ import {
   PlusCircle,
   HelpCircle,
   Snowflake,
-  GraduationCap
+  GraduationCap,
+  Sliders,
+  Plus,
+  Minus
 } from 'lucide-react';
 import { QuizResponse, VacationSeason } from '../types';
 import { deleteAllResponses, resetShownStatusAll, seedSampleResponses } from '../lib/supabase';
@@ -33,6 +36,8 @@ interface TeacherLobbyProps {
   isSupabaseConnected: boolean;
   season: VacationSeason;
   onToggleSeason: (newSeason: VacationSeason) => void;
+  keywordCount?: number;
+  onKeywordCountChange?: (count: number) => void;
 }
 
 export function TeacherLobby({
@@ -45,6 +50,8 @@ export function TeacherLobby({
   isSupabaseConnected,
   season,
   onToggleSeason,
+  keywordCount = 3,
+  onKeywordCountChange,
 }: TeacherLobbyProps) {
   const [copied, setCopied] = useState(false);
   const [hideNames, setHideNames] = useState(true);
@@ -54,9 +61,9 @@ export function TeacherLobby({
   const isWinter = season === 'winter';
   const isTraining = season === 'training';
 
-  // Student participation URL with season parameter preserved
+  // Student participation URL with season parameter and keyword count preserved
   const studentUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}${window.location.pathname}?role=student&season=${season}`
+    ? `${window.location.origin}${window.location.pathname}?role=student&season=${season}&count=${keywordCount}`
     : '';
 
   const totalCount = responses.length;
@@ -285,6 +292,104 @@ export function TeacherLobby({
                   </>
                 )}
               </button>
+            </div>
+          </div>
+
+          {/* Question / Keyword Count Adjuster Card */}
+          <div 
+            id="question-count-adjuster"
+            className={`w-full rounded-3xl p-4 sm:p-5 border-3 text-left space-y-3 transition-colors ${
+              isTraining 
+                ? 'bg-[#FAF5FF] border-[#DDD6FE]' 
+                : isWinter 
+                ? 'bg-[#F0F9FF] border-[#BAE6FD]' 
+                : 'bg-[#FEFCE8] border-[#FEF08A]'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Sliders className={`w-4 h-4 ${isTraining ? 'text-purple-600' : 'text-[#0EA5E9]'}`} />
+                <span className="font-black text-sm sm:text-base text-[#0369A1]">
+                  문항 수 조절 (키워드 개수)
+                </span>
+              </div>
+              <span className={`px-3 py-1 rounded-full text-xs font-black border-2 shadow-xs ${
+                isTraining
+                  ? 'bg-purple-600 text-white border-purple-700'
+                  : 'bg-[#0EA5E9] text-white border-[#0284C7]'
+              }`}>
+                기본 {keywordCount}개
+              </span>
+            </div>
+
+            <p className="text-xs text-slate-600 font-bold leading-relaxed">
+              참여자가 작성할 키워드 문항 수를 설정합니다. QR 코드 링크에 자동 반영되며, 참여자 화면에서도 자유롭게 문항을 추가/삭제할 수 있습니다.
+            </p>
+
+            {/* Stepper and Quick Presets */}
+            <div className="space-y-2 pt-1">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  id="decrease-keyword-count-button"
+                  disabled={keywordCount <= 1}
+                  onClick={() => {
+                    if (onKeywordCountChange && keywordCount > 1) {
+                      onKeywordCountChange(keywordCount - 1);
+                      playPopSound();
+                    }
+                  }}
+                  className="w-10 h-10 rounded-xl bg-white hover:bg-slate-50 border-2 border-slate-300 disabled:opacity-30 disabled:pointer-events-none text-slate-700 font-black flex items-center justify-center shadow-xs cursor-pointer active:scale-95"
+                  title="문항 수 1개 줄이기"
+                >
+                  <Minus className="w-4 h-4" />
+                </button>
+
+                <div className="flex-1 flex items-center justify-center bg-white border-2 border-slate-300 rounded-xl h-10 font-black text-[#0369A1] text-sm">
+                  <span>{keywordCount}개 문항</span>
+                </div>
+
+                <button
+                  type="button"
+                  id="increase-keyword-count-button"
+                  disabled={keywordCount >= 8}
+                  onClick={() => {
+                    if (onKeywordCountChange && keywordCount < 8) {
+                      onKeywordCountChange(keywordCount + 1);
+                      playPopSound();
+                    }
+                  }}
+                  className="w-10 h-10 rounded-xl bg-white hover:bg-slate-50 border-2 border-slate-300 disabled:opacity-30 disabled:pointer-events-none text-slate-700 font-black flex items-center justify-center shadow-xs cursor-pointer active:scale-95"
+                  title="문항 수 1개 늘리기"
+                >
+                  <Plus className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Quick Preset Buttons */}
+              <div className="grid grid-cols-6 gap-1.5 pt-1">
+                {[1, 2, 3, 4, 5, 6].map((num) => (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => {
+                      if (onKeywordCountChange) {
+                        onKeywordCountChange(num);
+                        playPopSound();
+                      }
+                    }}
+                    className={`py-1.5 rounded-xl font-black text-xs transition-all border-2 cursor-pointer ${
+                      keywordCount === num
+                        ? isTraining
+                          ? 'bg-purple-600 text-white border-purple-700 shadow-xs'
+                          : 'bg-[#0EA5E9] text-white border-[#0284C7] shadow-xs'
+                        : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                    }`}
+                  >
+                    {num}개
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </div>
