@@ -2,10 +2,10 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { QuizResponse, VacationSeason } from '../types';
 
 // ============================================================================
-// [필수 설정] 레거시 anon key 반영 완료
+// [필수 설정] 올바른 프로젝트 URL('fq')과 새로운 Publishable Key 반영 완료
 // ============================================================================
 const PORTAL_URL = 'https://lqajnsqoovngfqabalkj.supabase.co';
-const PORTAL_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxxYWpuc3Fvb3ZuZ2ZnYWJhbGtqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3NjQ5MDQsImV4cCI6MjA5ODM0MDkwNH0.-H-pVBoM_SgEBltYeBVkYpfQoZNpZ820Og7UdX-nxko';
+const PORTAL_ANON_KEY = 'sb_publishable_DcAlnHgLYSd92ICS66z3RA_DvrzyPhX';
 
 export const isSupabaseConfigured = Boolean(
   PORTAL_URL &&
