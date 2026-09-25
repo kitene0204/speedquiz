@@ -2,9 +2,9 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { QuizResponse, VacationSeason } from '../types';
 
 // ============================================================================
-// [필수 설정] 통합 'portal' 프로젝트 연결 정보 하드코딩
+// [필수 설정] 통합 'portal' 프로젝트 연결 정보 (선생님이 보내주신 진짜 키 반영)
 // ============================================================================
-const PORTAL_URL = 'https://lqajhsqbovnglgabaikj.supabase.co';
+const PORTAL_URL = 'https://lqajnsqoovngfqabalkj.supabase.co';
 const PORTAL_ANON_KEY = 'sb_publishable_DcAlnHgLYSd92ICS66z3RA_DvrzyPhX';
 
 export const isSupabaseConfigured = Boolean(
@@ -67,7 +67,7 @@ export async function fetchQuizResponses(): Promise<QuizResponse[]> {
   if (supabase) {
     try {
       const { data, error } = await supabase
-        .from('speedquiz_quiz_responses')
+        .from('quiz_responses')
         .select('*')
         .order('created_at', { ascending: true });
 
@@ -113,7 +113,7 @@ export async function submitQuizResponse(
   if (supabase) {
     try {
       const { data, error } = await supabase
-        .from('speedquiz_quiz_responses')
+        .from('quiz_responses')
         .insert({
           id: newRecord.id,
           student_name: cleanName,
@@ -152,7 +152,7 @@ export async function markResponseAsShown(id: string, isShown = true): Promise<b
   if (supabase) {
     try {
       const { error } = await supabase
-        .from('speedquiz_quiz_responses')
+        .from('quiz_responses')
         .update({ is_shown: isShown })
         .eq('id', id);
 
@@ -164,7 +164,6 @@ export async function markResponseAsShown(id: string, isShown = true): Promise<b
     }
   }
 
-  // Always update local cache for smooth instantaneous UI
   const current = getLocalResponses();
   const updated = current.map(item => (item.id === id ? { ...item, is_shown: isShown } : item));
   setLocalResponses(updated);
@@ -178,7 +177,7 @@ export async function deleteAllResponses(): Promise<boolean> {
   if (supabase) {
     try {
       const { error } = await supabase
-        .from('speedquiz_quiz_responses')
+        .from('quiz_responses')
         .delete()
         .neq('id', '00000000-0000-0000-0000-000000000000');
 
@@ -201,7 +200,7 @@ export async function resetShownStatusAll(): Promise<boolean> {
   if (supabase) {
     try {
       await supabase
-        .from('speedquiz_quiz_responses')
+        .from('quiz_responses')
         .update({ is_shown: false })
         .neq('id', '00000000-0000-0000-0000-000000000000');
     } catch (err) {
@@ -260,7 +259,7 @@ export async function seedSampleResponses(season: VacationSeason = 'summer'): Pr
 }
 
 /**
- * Setup Realtime Listener for speedquiz_quiz_responses table
+ * Setup Realtime Listener for quiz_responses table
  */
 export function subscribeToQuizChanges(
   onUpdate: () => void
@@ -293,7 +292,7 @@ export function subscribeToQuizChanges(
           {
             event: '*',
             schema: 'public',
-            table: 'speedquiz_quiz_responses',
+            table: 'quiz_responses',
           },
           () => {
             onUpdate();
@@ -320,8 +319,8 @@ export function subscribeToQuizChanges(
   };
 }
 
-export const SUPABASE_SQL_SCHEMA = `-- 1. speedquiz_quiz_responses 테이블 생성
-CREATE TABLE speedquiz_quiz_responses (
+export const SUPABASE_SQL_SCHEMA = `-- 1. quiz_responses 테이블 생성
+CREATE TABLE quiz_responses (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
   student_name TEXT NOT NULL,
@@ -330,12 +329,12 @@ CREATE TABLE speedquiz_quiz_responses (
 );
 
 -- 2. Row Level Security (RLS) 활성화
-ALTER TABLE speedquiz_quiz_responses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quiz_responses ENABLE ROW LEVEL SECURITY;
 
 -- 3. 학생(익명) 및 교사 읽기/쓰기/수정/삭제 권한 부여
-CREATE POLICY "Enable all access for speedquiz_quiz_responses" ON speedquiz_quiz_responses
+CREATE POLICY "Enable all access for quiz_responses" ON quiz_responses
   FOR ALL USING (true) WITH CHECK (true);
 
 -- 4. 실시간 (Realtime) 동기화 활성화
-ALTER PUBLICATION supabase_realtime ADD TABLE speedquiz_quiz_responses;
+ALTER PUBLICATION supabase_realtime ADD TABLE quiz_responses;
 `;
