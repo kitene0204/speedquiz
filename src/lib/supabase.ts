@@ -2,7 +2,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { QuizResponse, VacationSeason } from '../types';
 
 // ============================================================================
-// [필수 설정] 통합 'portal' 프로젝트 연결 정보 (선생님이 보내주신 진짜 키 반영)
+// [필수 설정] 진짜 프로젝트 URL('n' 오타 수정 완료)과 Anon Key 반영
 // ============================================================================
 const PORTAL_URL = 'https://lqajnsqoovngfqabalkj.supabase.co';
 const PORTAL_ANON_KEY = 'sb_publishable_DcAlnHgLYSd92ICS66z3RA_DvrzyPhX';
