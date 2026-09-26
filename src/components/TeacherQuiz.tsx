@@ -11,7 +11,7 @@ import {
   Award,
   Users
 } from 'lucide-react';
-import { QuizResponse, VacationSeason } from '../types';
+import { QuizResponse, VacationSeason, ChapterConfig, DEFAULT_CHAPTERS } from '../types';
 import { markResponseAsShown, resetShownStatusAll } from '../lib/supabase';
 import { playFanfareSound, playPopSound } from '../lib/sound';
 
@@ -21,6 +21,7 @@ interface TeacherQuizProps {
   isMuted: boolean;
   onToggleMute: () => void;
   season: VacationSeason;
+  chapter?: ChapterConfig;
 }
 
 export function TeacherQuiz({
@@ -29,6 +30,7 @@ export function TeacherQuiz({
   isMuted,
   onToggleMute,
   season,
+  chapter,
 }: TeacherQuizProps) {
   const [currentQuiz, setCurrentQuiz] = useState<QuizResponse | null>(null);
   const [isRevealed, setIsRevealed] = useState(false);
@@ -36,6 +38,7 @@ export function TeacherQuiz({
 
   const isWinter = season === 'winter';
   const isTraining = season === 'training';
+  const currentChapter = chapter || DEFAULT_CHAPTERS[season];
 
   // Compute stats
   const totalCount = responses.length;
@@ -176,12 +179,12 @@ export function TeacherQuiz({
       <div className="max-w-5xl mx-auto w-full px-4 py-8 animate-fadeIn">
         <div 
           className={`bg-white rounded-[40px] sm:rounded-[48px] shadow-[0_20px_0_0_#0EA5E9] flex flex-col overflow-hidden border-6 sm:border-8 p-6 sm:p-12 text-center space-y-8 ${
-            isTraining ? 'border-[#DDD6FE]' : isWinter ? 'border-[#BAE6FD]' : 'border-[#FEF08A]'
+            isTraining ? 'border-[#88D4A8]' : isWinter ? 'border-[#BAE6FD]' : 'border-[#FEF08A]'
           }`}
         >
           <div className={`w-24 h-24 mx-auto rounded-3xl flex items-center justify-center rotate-3 border-4 text-4xl ${
             isTraining 
-              ? 'bg-[#F3E8FF] text-purple-700 shadow-[0_8px_0_0_#C084FC] border-[#E9D5FF]' 
+              ? 'bg-[#E8F6ED] text-[#006633] shadow-[0_8px_0_0_#88D4A8] border-[#B7E2C9]' 
               : 'bg-[#FEF08A] text-[#0369A1] shadow-[0_8px_0_0_#FACC15] border-[#FDE047]'
           }`}>
             {isTraining ? '🎓' : isWinter ? '⛄' : '🏆'}
@@ -189,17 +192,13 @@ export function TeacherQuiz({
 
           <div className="space-y-3">
             <h1 className="text-3xl sm:text-5xl font-black text-[#0369A1] tracking-tight">
-              {isTraining 
-                ? '와아! 모든 교사 연수 퀴즈 완료! 🎓🎉' 
-                : isWinter 
-                ? '와아! 모든 겨울방학 퀴즈 완료! ⛄🎉' 
-                : '와아! 모든 방학 퀴즈 완료! 🎊'}
+              와아! 모든 {currentChapter.name} 퀴즈 완료! {currentChapter.emoji}🎉
             </h1>
             <p className="text-slate-600 text-base sm:text-lg max-w-lg mx-auto font-bold">
               {isTraining ? (
-                <>참여하신 선생님 <strong className="text-purple-700">{totalCount}분</strong>의 경험 키워드를 모두 함께 나누었습니다!</>
+                <>참여하신 선생님 <strong className="text-[#006633]">{totalCount}분</strong>의 경험 키워드를 모두 함께 나누었습니다!</>
               ) : (
-                <>우리 반 친구 <strong className="text-[#0369A1]">{totalCount}명</strong>의 {isWinter ? '겨울방학' : '방학'} 키워드를 모두 맞혔습니다!</>
+                <>우리 반 친구 <strong className="text-[#0369A1]">{totalCount}명</strong>의 {currentChapter.name} 키워드를 모두 맞혔습니다!</>
               )}
             </p>
           </div>
@@ -211,7 +210,7 @@ export function TeacherQuiz({
               <span>
                 {isTraining 
                   ? `선생님들의 경험 키워드 모아보기 (${totalCount}명)` 
-                  : `우리 반 ${isWinter ? '겨울방학' : '방학'} 키워드 모아보기 (${totalCount}명)`}
+                  : `우리 반 ${currentChapter.name} 키워드 모아보기 (${totalCount}명)`}
               </span>
             </h2>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-96 overflow-y-auto pr-1">
@@ -250,7 +249,7 @@ export function TeacherQuiz({
               onClick={handleResetAllQuiz}
               className={`py-4 px-8 rounded-2xl text-white font-black text-xl transition-all active:translate-y-2 active:shadow-none flex items-center justify-center gap-2 cursor-pointer ${
                 isTraining
-                  ? 'bg-purple-600 hover:bg-purple-700 shadow-[0_8px_0_0_#7C3AED] hover:translate-y-1 hover:shadow-[0_4px_0_0_#7C3AED]'
+                  ? 'bg-[#006633] hover:bg-[#00542A] shadow-[0_8px_0_0_#003D1E] hover:translate-y-1 hover:shadow-[0_4px_0_0_#003D1E]'
                   : 'bg-[#0EA5E9] hover:bg-[#0284C7] shadow-[0_8px_0_0_#0284C7] hover:translate-y-1 hover:shadow-[0_4px_0_0_#0284C7]'
               }`}
             >
@@ -280,14 +279,14 @@ export function TeacherQuiz({
       <div 
         id="quiz-main-stage"
         className={`bg-white rounded-[40px] sm:rounded-[48px] shadow-[0_20px_0_0_#0EA5E9] flex flex-col overflow-hidden border-6 sm:border-8 ${
-          isTraining ? 'border-[#DDD6FE]' : isWinter ? 'border-[#BAE6FD]' : 'border-[#FEF08A]'
+          isTraining ? 'border-[#88D4A8]' : isWinter ? 'border-[#BAE6FD]' : 'border-[#FEF08A]'
         }`}
       >
         {/* Header Bar */}
         <header 
           className={`min-h-20 sm:h-24 flex flex-wrap items-center justify-between px-6 sm:px-12 py-3 border-b-4 gap-4 ${
             isTraining 
-              ? 'bg-[#FAF5FF] border-[#E9D5FF]' 
+              ? 'bg-[#F2FBF5] border-[#B7E2C9]' 
               : isWinter 
               ? 'bg-[#E0F2FE] border-[#BAE6FD]' 
               : 'bg-[#FEF9C3] border-[#FEF08A]'
@@ -295,16 +294,12 @@ export function TeacherQuiz({
         >
           <div className="flex items-center gap-4">
             <div className={`text-white px-5 sm:px-6 py-1.5 sm:py-2 rounded-full font-bold text-base sm:text-xl ${
-              isTraining ? 'bg-purple-600 shadow-[0_3px_0_0_#7C3AED]' : 'bg-[#0EA5E9] shadow-[0_3px_0_0_#0284C7]'
+              isTraining ? 'bg-[#006633] shadow-[0_3px_0_0_#003D1E]' : 'bg-[#0EA5E9] shadow-[0_3px_0_0_#0284C7]'
             }`}>
               제 {currentNumber} / {totalCount} 번
             </div>
             <h1 className="text-xl sm:text-3xl font-black text-[#0369A1] tracking-tight">
-              {isTraining 
-                ? '교사 연수 경험 키워드 퀴즈 🎓' 
-                : isWinter 
-                ? '겨울방학 키워드 스피드 퀴즈 ⛄' 
-                : '방학 키워드 스피드 퀴즈'}
+              {currentChapter.title} {currentChapter.emoji}
             </h1>
           </div>
 
@@ -435,7 +430,7 @@ export function TeacherQuiz({
                 onClick={handleRevealAnswer}
                 className={`text-white px-8 sm:px-12 py-3.5 sm:py-4 rounded-2xl font-black text-xl sm:text-2xl hover:translate-y-1 active:translate-y-2 active:shadow-none transition-all cursor-pointer ${
                   isTraining
-                    ? 'bg-purple-600 hover:bg-purple-700 shadow-[0_8px_0_0_#7C3AED] hover:shadow-[0_4px_0_0_#7C3AED]'
+                    ? 'bg-[#006633] hover:bg-[#00542A] shadow-[0_8px_0_0_#003D1E] hover:shadow-[0_4px_0_0_#003D1E]'
                     : 'bg-[#0EA5E9] text-white shadow-[0_8px_0_0_#0284C7] hover:shadow-[0_4px_0_0_#0284C7]'
                 }`}
               >

@@ -20,9 +20,10 @@ import {
   GraduationCap,
   Sliders,
   Plus,
-  Minus
+  Minus,
+  Settings
 } from 'lucide-react';
-import { QuizResponse, VacationSeason } from '../types';
+import { QuizResponse, VacationSeason, ChaptersSettings, DEFAULT_CHAPTERS } from '../types';
 import { deleteAllResponses, resetShownStatusAll, seedSampleResponses } from '../lib/supabase';
 import { playPopSound } from '../lib/sound';
 
@@ -38,6 +39,8 @@ interface TeacherLobbyProps {
   onToggleSeason: (newSeason: VacationSeason) => void;
   keywordCount?: number;
   onKeywordCountChange?: (count: number) => void;
+  chapters?: ChaptersSettings;
+  onOpenChapterSettings?: () => void;
 }
 
 export function TeacherLobby({
@@ -52,6 +55,8 @@ export function TeacherLobby({
   onToggleSeason,
   keywordCount = 3,
   onKeywordCountChange,
+  chapters,
+  onOpenChapterSettings,
 }: TeacherLobbyProps) {
   const [copied, setCopied] = useState(false);
   const [hideNames, setHideNames] = useState(true);
@@ -60,6 +65,7 @@ export function TeacherLobby({
 
   const isWinter = season === 'winter';
   const isTraining = season === 'training';
+  const currentChapter = (chapters && chapters[season]) || DEFAULT_CHAPTERS[season];
 
   // Student participation URL with season parameter and keyword count preserved
   const studentUrl = typeof window !== 'undefined'
@@ -113,13 +119,13 @@ export function TeacherLobby({
       {/* Top Banner / Classroom Title */}
       <div 
         className={`bg-white rounded-[40px] sm:rounded-[48px] shadow-[0_16px_0_0_#0EA5E9] border-6 sm:border-8 overflow-hidden transition-colors ${
-          isTraining ? 'border-[#DDD6FE]' : isWinter ? 'border-[#BAE6FD]' : 'border-[#FEF08A]'
+          isTraining ? 'border-[#88D4A8]' : isWinter ? 'border-[#BAE6FD]' : 'border-[#FEF08A]'
         }`}
       >
         <div 
           className={`p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left transition-colors border-b-4 ${
             isTraining 
-              ? 'bg-[#FAF5FF] border-[#E9D5FF]' 
+              ? 'bg-[#F2FBF5] border-[#B7E2C9]' 
               : isWinter 
               ? 'bg-[#E0F2FE] border-[#BAE6FD]' 
               : 'bg-[#FEF9C3] border-[#FEF08A]'
@@ -129,16 +135,12 @@ export function TeacherLobby({
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
               <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-white font-black text-xs ${
                 isTraining 
-                  ? 'bg-purple-600 shadow-[0_2px_0_0_#7C3AED]' 
+                  ? 'bg-[#006633] shadow-[0_2px_0_0_#003D1E]' 
                   : 'bg-[#0EA5E9] shadow-[0_2px_0_0_#0284C7]'
               }`}>
                 {isTraining ? <GraduationCap className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
                 <span>
-                  {isTraining 
-                    ? '연수 진행자 모드 (교사 연수 대기실 🎓)' 
-                    : isWinter 
-                    ? '선생님 진행자 모드 (겨울방학 대기실 ⛄)' 
-                    : '선생님 진행자 모드 (여름방학 대기실 🏖️)'}
+                  {isTraining ? '연수 진행자 모드' : '선생님 진행자 모드'} ({currentChapter.name} 대기실 {currentChapter.emoji})
                 </span>
               </div>
               <button
@@ -146,38 +148,38 @@ export function TeacherLobby({
                 onClick={toggleSeasonMode}
                 className={`px-3 py-1 rounded-full text-xs font-black border transition-all cursor-pointer ${
                   isTraining
-                    ? 'bg-purple-100 text-purple-900 border-purple-300 hover:bg-purple-200'
+                    ? 'bg-[#E8F6ED] text-[#006633] border-[#88D4A8] hover:bg-[#DCF2E4]'
                     : isWinter 
                     ? 'bg-white text-sky-700 border-sky-300 hover:bg-sky-50' 
                     : 'bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200'
                 }`}
                 title="클릭하여 모드 변경 (여름 ➔ 겨울 ➔ 교사 연수)"
               >
-                {isTraining 
-                  ? '🎓 교사 연수 모드 (클릭 전환)' 
-                  : isWinter 
-                  ? '❄️ 겨울방학 모드 (클릭 전환)' 
-                  : '☀️ 여름방학 모드 (클릭 전환)'}
+                <span>{currentChapter.emoji} {currentChapter.name} 모드 (클릭 전환)</span>
               </button>
             </div>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black text-[#0369A1] tracking-tight">
-              {isTraining 
-                ? '선생님의 경험을 맞춰봐! 🎓💡' 
-                : isWinter 
-                ? '내 겨울방학을 맞춰봐! ⛄❄️' 
-                : '내 방학을 맞춰봐! 🏖️'}
+              {currentChapter.title} {currentChapter.emoji}
             </h1>
             <p className="text-[#0369A1]/80 text-sm sm:text-base font-bold max-w-xl">
-              {isTraining
-                ? '화면의 QR 코드를 연수실 화면에 띄워주세요. 선생님들이 스마트폰으로 최근 경험한 일(취미, 특별한 경험, 방학 이야기 등) 키워드를 제출합니다!'
-                : isWinter
-                ? '화면의 QR 코드를 전자칠판에 띄워주세요. 학생들이 스마트폰이나 태블릿으로 겨울방학 키워드를 제출합니다!'
-                : '화면의 QR 코드를 전자칠판에 띄워주세요. 학생들이 스마트폰이나 태블릿으로 자신의 방학 키워드를 제출합니다!'}
+              {currentChapter.description}
             </p>
           </div>
 
           {/* Action Controls */}
           <div className="flex flex-wrap items-center gap-3 justify-center md:justify-end">
+            {onOpenChapterSettings && (
+              <button
+                id="lobby-chapter-settings-button"
+                onClick={onOpenChapterSettings}
+                className="px-4 py-3 rounded-2xl border-2 font-black text-xs sm:text-sm transition-all flex items-center gap-2 bg-white text-slate-700 border-slate-300 shadow-[0_4px_0_0_#CBD5E1] hover:bg-slate-50 cursor-pointer"
+                title="여름방학, 겨울방학, 교사연수 등 챕터 제목 직접 타이핑 수정"
+              >
+                <Settings className="w-4 h-4 text-slate-600" />
+                <span>챕터 제목 설정</span>
+              </button>
+            )}
+
             <button
               id="toggle-sound-button"
               onClick={onToggleMute}
@@ -210,7 +212,7 @@ export function TeacherLobby({
               onClick={onSwitchToStudent}
               className={`px-4 py-3 rounded-2xl text-white font-black text-xs sm:text-sm transition-all flex items-center gap-1.5 cursor-pointer ${
                 isTraining
-                  ? 'bg-purple-600 hover:bg-purple-700 shadow-[0_4px_0_0_#6D28D9]'
+                  ? 'bg-[#006633] hover:bg-[#00542A] shadow-[0_4px_0_0_#003D1E]'
                   : 'bg-[#0EA5E9] hover:bg-[#0284C7] shadow-[0_4px_0_0_#0284C7]'
               }`}
             >
@@ -226,20 +228,18 @@ export function TeacherLobby({
         {/* Left Column: QR Code Card (Big for classroom/training projection) */}
         <div 
           className={`lg:col-span-5 bg-white rounded-[36px] sm:rounded-[44px] p-6 sm:p-8 shadow-[0_16px_0_0_#0EA5E9] border-6 flex flex-col items-center text-center space-y-5 ${
-            isTraining ? 'border-[#DDD6FE]' : isWinter ? 'border-[#BAE6FD]' : 'border-[#FEF08A]'
+            isTraining ? 'border-[#88D4A8]' : isWinter ? 'border-[#BAE6FD]' : 'border-[#FEF08A]'
           }`}
         >
           <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-black border-2 ${
             isTraining 
-              ? 'bg-[#F3E8FF] text-purple-800 border-purple-200' 
+              ? 'bg-[#E8F6ED] text-[#006633] border-[#88D4A8]' 
               : 'bg-[#BAE6FD] text-[#0369A1] border-[#0EA5E9]/20'
           }`}>
             <span>
               {isTraining 
-                ? '🎓 선생님 참여 QR 코드 (교사 연수)' 
-                : isWinter 
-                ? '⛄ 학생 참여 QR 코드 (겨울방학)' 
-                : '📱 학생 참여 QR 코드 (여름방학)'}
+                ? `🎾 선생님 참여 QR 코드 (${currentChapter.name})` 
+                : `📱 학생 참여 QR 코드 (${currentChapter.name})`}
             </span>
           </div>
 
@@ -251,7 +251,7 @@ export function TeacherLobby({
           <div 
             id="qr-code-display-card"
             className={`p-5 sm:p-6 rounded-3xl border-4 shadow-[0_8px_0_0_#BAE6FD] flex items-center justify-center transition-transform hover:scale-[1.02] ${
-              isTraining ? 'bg-[#FAF5FF] border-[#DDD6FE]' : 'bg-[#F0F9FF] border-[#BAE6FD]'
+              isTraining ? 'bg-[#F2FBF5] border-[#88D4A8]' : 'bg-[#F0F9FF] border-[#BAE6FD]'
             }`}
           >
             <QRCodeSVG
@@ -300,7 +300,7 @@ export function TeacherLobby({
             id="question-count-adjuster"
             className={`w-full rounded-3xl p-4 sm:p-5 border-3 text-left space-y-3 transition-colors ${
               isTraining 
-                ? 'bg-[#FAF5FF] border-[#DDD6FE]' 
+                ? 'bg-[#F2FBF5] border-[#88D4A8]' 
                 : isWinter 
                 ? 'bg-[#F0F9FF] border-[#BAE6FD]' 
                 : 'bg-[#FEFCE8] border-[#FEF08A]'
@@ -308,14 +308,14 @@ export function TeacherLobby({
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Sliders className={`w-4 h-4 ${isTraining ? 'text-purple-600' : 'text-[#0EA5E9]'}`} />
+                <Sliders className={`w-4 h-4 ${isTraining ? 'text-[#006633]' : 'text-[#0EA5E9]'}`} />
                 <span className="font-black text-sm sm:text-base text-[#0369A1]">
                   문항 수 조절 (키워드 개수)
                 </span>
               </div>
               <span className={`px-3 py-1 rounded-full text-xs font-black border-2 shadow-xs ${
                 isTraining
-                  ? 'bg-purple-600 text-white border-purple-700'
+                  ? 'bg-[#006633] text-white border-[#004D26]'
                   : 'bg-[#0EA5E9] text-white border-[#0284C7]'
               }`}>
                 기본 {keywordCount}개
@@ -381,7 +381,7 @@ export function TeacherLobby({
                     className={`py-1.5 rounded-xl font-black text-xs transition-all border-2 cursor-pointer ${
                       keywordCount === num
                         ? isTraining
-                          ? 'bg-purple-600 text-white border-purple-700 shadow-xs'
+                          ? 'bg-[#006633] text-white border-[#004D26] shadow-xs'
                           : 'bg-[#0EA5E9] text-white border-[#0284C7] shadow-xs'
                         : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                     }`}
@@ -399,14 +399,14 @@ export function TeacherLobby({
           {/* Real-time Status Card */}
           <div 
             className={`bg-white rounded-[36px] sm:rounded-[44px] p-6 sm:p-8 shadow-[0_16px_0_0_#0EA5E9] border-6 space-y-6 ${
-              isTraining ? 'border-[#DDD6FE]' : isWinter ? 'border-[#BAE6FD]' : 'border-[#FEF08A]'
+              isTraining ? 'border-[#88D4A8]' : isWinter ? 'border-[#BAE6FD]' : 'border-[#FEF08A]'
             }`}
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b-2 border-slate-100">
               <div className="flex items-center gap-3">
                 <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black border-2 shadow-[0_4px_0_0_#0EA5E9] ${
                   isTraining 
-                    ? 'bg-[#F3E8FF] text-purple-700 border-purple-300' 
+                    ? 'bg-[#E8F6ED] text-[#006633] border-[#88D4A8]' 
                     : 'bg-[#BAE6FD] text-[#0369A1] border-[#0EA5E9]/40'
                 }`}>
                   {isTraining 
@@ -435,7 +435,7 @@ export function TeacherLobby({
               <div 
                 className={`flex items-baseline gap-1.5 px-6 py-3 rounded-2xl self-start sm:self-auto border-3 shadow-xs ${
                   isTraining
-                    ? 'bg-[#FAF5FF] border-[#E9D5FF] shadow-[0_4px_0_0_#E9D5FF]'
+                    ? 'bg-[#F2FBF5] border-[#B7E2C9] shadow-[0_4px_0_0_#B7E2C9]'
                     : isWinter 
                     ? 'bg-[#E0F2FE] border-[#BAE6FD] shadow-[0_4px_0_0_#BAE6FD]' 
                     : 'bg-[#FEF9C3] border-[#FEF08A] shadow-[0_4px_0_0_#FEF08A]'
@@ -456,7 +456,7 @@ export function TeacherLobby({
                 disabled={totalCount === 0}
                 className={`w-full py-5 px-6 rounded-2xl text-white font-black text-xl sm:text-2xl transition-all flex items-center justify-center gap-3 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer ${
                   isTraining
-                    ? 'bg-purple-600 hover:bg-purple-700 shadow-[0_8px_0_0_#6D28D9] hover:translate-y-1 hover:shadow-[0_4px_0_0_#6D28D9]'
+                    ? 'bg-[#006633] hover:bg-[#00542A] shadow-[0_8px_0_0_#003D1E] hover:translate-y-1 hover:shadow-[0_4px_0_0_#003D1E]'
                     : 'bg-[#22C55E] hover:bg-[#16A34A] shadow-[0_8px_0_0_#16A34A] hover:translate-y-1 hover:shadow-[0_4px_0_0_#16A34A]'
                 }`}
               >
@@ -465,8 +465,8 @@ export function TeacherLobby({
                   {totalCount === 0
                     ? (isTraining ? '선생님들의 응답을 기다리는 중...' : '학생들의 응답을 기다리는 중...')
                     : unshownCount === 0
-                    ? `${isTraining ? '교사 연수' : isWinter ? '겨울방학' : '방학'} 퀴즈 완료 (다시 시작하기)`
-                    : `${isTraining ? '🎓 교사 연수' : isWinter ? '겨울방학' : '방학'} 퀴즈 시작하기! (남은 문제: ${unshownCount}개) ▶`}
+                    ? `${currentChapter.name} 퀴즈 완료 (다시 시작하기)`
+                    : `${currentChapter.emoji} ${currentChapter.name} 퀴즈 시작하기! (남은 문제: ${unshownCount}개) ▶`}
                 </span>
               </button>
 
@@ -519,7 +519,7 @@ export function TeacherLobby({
           {/* Participant List Preview Card */}
           <div 
             className={`bg-white rounded-[36px] p-6 shadow-[0_12px_0_0_#0EA5E9] border-6 space-y-4 ${
-              isTraining ? 'border-[#DDD6FE]' : isWinter ? 'border-[#BAE6FD]' : 'border-[#FEF08A]'
+              isTraining ? 'border-[#88D4A8]' : isWinter ? 'border-[#BAE6FD]' : 'border-[#FEF08A]'
             }`}
           >
             <div className="flex items-center justify-between">

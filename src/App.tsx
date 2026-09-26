@@ -9,17 +9,19 @@ import {
   subscribeToQuizChanges, 
   isSupabaseConfigured 
 } from './lib/supabase';
-import { QuizResponse, AppRole, VacationSeason } from './types';
+import { QuizResponse, AppRole, VacationSeason, ChaptersSettings, DEFAULT_CHAPTERS } from './types';
 import { TeacherLobby } from './components/TeacherLobby';
 import { TeacherQuiz } from './components/TeacherQuiz';
 import { StudentForm } from './components/StudentForm';
 import { SupabaseGuideModal } from './components/SupabaseGuideModal';
+import { ChapterSettingsModal } from './components/ChapterSettingsModal';
 import { SnowEffect } from './components/SnowEffect';
 import { toggleMute, getMuteState } from './lib/sound';
-import { Users, Presentation, Database, HelpCircle, Snowflake, Sun, GraduationCap } from 'lucide-react';
+import { Users, Presentation, Database, HelpCircle, Snowflake, Sun, GraduationCap, Settings } from 'lucide-react';
 
 const SEASON_STORAGE_KEY = 'vacation_quiz_season_v1';
 const KEYWORD_COUNT_STORAGE_KEY = 'vacation_quiz_keyword_count_v1';
+const CHAPTERS_STORAGE_KEY = 'vacation_quiz_chapters_v2';
 
 export default function App() {
   // Detect role from URL query (e.g. ?role=student) or default to teacher
@@ -48,6 +50,28 @@ export default function App() {
     return 'summer';
   });
 
+  // Custom chapters configuration (여름방학, 겨울방학, 교사연수 등 챕터 탭 제목 및 퀴즈 대제목 직접 타이핑 수정)
+  const [chapters, setChapters] = useState<ChaptersSettings>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem(CHAPTERS_STORAGE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          return {
+            summer: { ...DEFAULT_CHAPTERS.summer, ...(parsed.summer || {}) },
+            winter: { ...DEFAULT_CHAPTERS.winter, ...(parsed.winter || {}) },
+            training: { ...DEFAULT_CHAPTERS.training, ...(parsed.training || {}) },
+          };
+        }
+      } catch {
+        // ignore
+      }
+    }
+    return DEFAULT_CHAPTERS;
+  });
+
+  const [isChapterSettingsOpen, setIsChapterSettingsOpen] = useState(false);
+
   // Adjustable number of keywords/questions (문항 수 조절: 기본 3~4개, 1~6개 조절 가능)
   const [keywordCount, setKeywordCount] = useState<number>(() => {
     if (typeof window !== 'undefined') {
@@ -75,6 +99,16 @@ export default function App() {
 
   const isWinter = season === 'winter';
   const isTraining = season === 'training';
+  const currentChapter = chapters[season] || DEFAULT_CHAPTERS[season];
+
+  const handleSaveChapters = (updated: ChaptersSettings) => {
+    setChapters(updated);
+    try {
+      localStorage.setItem(CHAPTERS_STORAGE_KEY, JSON.stringify(updated));
+    } catch {
+      // ignore
+    }
+  };
 
   // Load responses from Supabase (or local storage fallback)
   const refreshResponses = useCallback(async () => {
@@ -155,7 +189,7 @@ export default function App() {
   return (
     <div 
       className={`min-h-screen flex flex-col transition-colors duration-300 ${
-        isTraining ? 'bg-[#EDE9FE]' : isWinter ? 'bg-[#E0F2FE]' : 'bg-[#BAE6FD]'
+        isTraining ? 'bg-[#EAF5EE]' : isWinter ? 'bg-[#E0F2FE]' : 'bg-[#BAE6FD]'
       } text-slate-800 selection:bg-amber-300 selection:text-amber-950 font-sans relative`}
     >
       {/* Gentle winter falling snowflakes */}
@@ -165,7 +199,7 @@ export default function App() {
       <header 
         className={`sticky top-0 z-40 border-b-4 transition-colors duration-300 shadow-xs ${
           isTraining 
-            ? 'bg-[#FAF5FF] border-[#E9D5FF]' 
+            ? 'bg-[#F2FBF5] border-[#B7E2C9]' 
             : isWinter 
             ? 'bg-[#EFF6FF] border-[#BFDBFE]' 
             : 'bg-[#FEF9C3] border-[#FEF08A]'
@@ -182,29 +216,27 @@ export default function App() {
             <div 
               className={`w-12 h-12 rounded-2xl text-white flex items-center justify-center font-black border-2 border-white transition-all text-2xl ${
                 isTraining
-                  ? 'bg-purple-600 shadow-[0_4px_0_0_#7C3AED]'
+                  ? 'bg-[#006633] shadow-[0_4px_0_0_#003D1E]'
                   : isWinter
                   ? 'bg-sky-500 shadow-[0_4px_0_0_#0284C7]'
                   : 'bg-[#0EA5E9] shadow-[0_4px_0_0_#0284C7]'
               }`}
             >
-              {isTraining ? '🎓' : isWinter ? '⛄' : '🏖️'}
+              {currentChapter.emoji}
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-black text-xl sm:text-2xl text-[#0369A1] tracking-tight">
-                  {isTraining ? '선생님의 경험을 맞춰봐!' : isWinter ? '내 겨울방학을 맞춰봐!' : '내 방학을 맞춰봐!'}
+                  {currentChapter.title}
                 </span>
                 <span className={`hidden sm:inline-block px-3 py-0.5 rounded-full text-white text-xs font-bold shadow-xs ${
-                  isTraining ? 'bg-purple-600' : isWinter ? 'bg-sky-500' : 'bg-[#0EA5E9]'
+                  isTraining ? 'bg-[#006633]' : isWinter ? 'bg-sky-500' : 'bg-[#0EA5E9]'
                 }`}>
-                  {isTraining ? '교사 연수 동기유발 💡' : isWinter ? '겨울방학 퀴즈 ❄️' : '스피드 퀴즈'}
+                  {currentChapter.badge}
                 </span>
               </div>
               <p className="text-xs font-bold text-[#0369A1]/70 hidden md:block">
-                {isTraining
-                  ? '교사 연수 동기유발 & 아이스브레이킹을 위한 경험 키워드 공유 퀴즈'
-                  : `초·중·고등학생 및 교사를 위한 ${isWinter ? '겨울방학' : '방학'} 키워드 공유 퀴즈`}
+                {currentChapter.description}
               </p>
             </div>
           </div>
@@ -215,7 +247,7 @@ export default function App() {
             <div 
               id="season-mode-toggle"
               className="flex items-center bg-white/95 p-1 rounded-2xl border-2 shadow-xs transition-colors"
-              style={{ borderColor: isTraining ? '#DDD6FE' : isWinter ? '#93C5FD' : '#FEF08A' }}
+              style={{ borderColor: isTraining ? '#88D4A8' : isWinter ? '#93C5FD' : '#FEF08A' }}
             >
               <button
                 id="season-tab-summer"
@@ -226,10 +258,10 @@ export default function App() {
                     ? 'bg-amber-400 text-amber-950 shadow-[0_2px_0_0_#D97706]'
                     : 'text-slate-500 hover:text-slate-800'
                 }`}
-                title="여름방학 모드로 전환"
+                title={`${chapters.summer.name} 모드로 전환`}
               >
                 <Sun className="w-3.5 h-3.5 text-amber-600" />
-                <span>여름방학 🏖️</span>
+                <span>{chapters.summer.name} {chapters.summer.emoji}</span>
               </button>
 
               <button
@@ -241,10 +273,10 @@ export default function App() {
                     ? 'bg-sky-500 text-white shadow-[0_2px_0_0_#0284C7]'
                     : 'text-slate-500 hover:text-slate-800'
                 }`}
-                title="겨울방학 모드로 전환"
+                title={`${chapters.winter.name} 모드로 전환`}
               >
                 <Snowflake className="w-3.5 h-3.5 text-white" />
-                <span>겨울방학 ⛄</span>
+                <span>{chapters.winter.name} {chapters.winter.emoji}</span>
               </button>
 
               <button
@@ -253,20 +285,20 @@ export default function App() {
                 onClick={() => handleSeasonChange('training')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
                   season === 'training'
-                    ? 'bg-purple-600 text-white shadow-[0_2px_0_0_#6D28D9]'
+                    ? 'bg-[#006633] text-white shadow-[0_2px_0_0_#003D1E]'
                     : 'text-slate-500 hover:text-slate-800'
                 }`}
-                title="교사 연수 모드로 전환 (아이스브레이킹 & 동기유발)"
+                title={`${chapters.training.name} 모드로 전환`}
               >
-                <GraduationCap className="w-4 h-4 text-purple-200" />
-                <span>교사 연수 🎓</span>
+                <GraduationCap className="w-4 h-4 text-emerald-200" />
+                <span>{chapters.training.name} {chapters.training.emoji}</span>
               </button>
             </div>
 
             {/* Role Switcher Tabs */}
             <div 
               className="flex items-center bg-white/95 p-1 rounded-2xl border-2 shadow-xs transition-colors"
-              style={{ borderColor: isTraining ? '#DDD6FE' : isWinter ? '#93C5FD' : '#FEF08A' }}
+              style={{ borderColor: isTraining ? '#88D4A8' : isWinter ? '#93C5FD' : '#FEF08A' }}
             >
               <button
                 id="role-tab-teacher"
@@ -274,7 +306,7 @@ export default function App() {
                 onClick={() => handleRoleChange('teacher')}
                 className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
                   role === 'teacher'
-                    ? (isTraining ? 'bg-purple-600 text-white shadow-[0_3px_0_0_#6D28D9]' : 'bg-[#0EA5E9] text-white shadow-[0_3px_0_0_#0284C7]')
+                    ? (isTraining ? 'bg-[#006633] text-white shadow-[0_3px_0_0_#003D1E]' : 'bg-[#0EA5E9] text-white shadow-[0_3px_0_0_#0284C7]')
                     : 'text-[#0369A1] hover:bg-slate-100'
                 }`}
               >
@@ -287,7 +319,7 @@ export default function App() {
                 onClick={() => handleRoleChange('student')}
                 className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
                   role === 'student'
-                    ? (isTraining ? 'bg-purple-600 text-white shadow-[0_3px_0_0_#6D28D9]' : 'bg-[#0EA5E9] text-white shadow-[0_3px_0_0_#0284C7]')
+                    ? (isTraining ? 'bg-[#006633] text-white shadow-[0_3px_0_0_#003D1E]' : 'bg-[#0EA5E9] text-white shadow-[0_3px_0_0_#0284C7]')
                     : 'text-[#0369A1] hover:bg-slate-100'
                 }`}
               >
@@ -297,8 +329,20 @@ export default function App() {
             </div>
           </div>
 
-          {/* Right: Database Connection Indicator & Guide Button */}
+          {/* Right: Chapter Settings, Database Connection Indicator & Guide Button */}
           <div className="flex items-center gap-2">
+            {/* Top Right Chapter Settings Button */}
+            <button
+              id="top-chapter-settings-button"
+              onClick={() => setIsChapterSettingsOpen(true)}
+              className="flex items-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-black transition-all border-2 bg-white hover:bg-slate-50 text-slate-800 border-slate-300 shadow-[0_3px_0_0_#CBD5E1] cursor-pointer"
+              title="여름방학, 겨울방학, 교사연수 등 챕터 제목 직접 타이핑 설정"
+            >
+              <Settings className="w-4 h-4 text-slate-700" />
+              <span className="hidden sm:inline">챕터 제목 설정</span>
+              <span className="sm:hidden">챕터 설정</span>
+            </button>
+
             <button
               id="top-supabase-badge"
               onClick={() => setIsGuideOpen(true)}
@@ -339,6 +383,7 @@ export default function App() {
             onToggleSeason={handleSeasonChange}
             initialKeywordCount={keywordCount}
             onKeywordCountChange={handleKeywordCountChange}
+            chapter={currentChapter}
           />
         ) : teacherScreen === 'lobby' ? (
           <TeacherLobby
@@ -353,6 +398,8 @@ export default function App() {
             onToggleSeason={handleSeasonChange}
             keywordCount={keywordCount}
             onKeywordCountChange={handleKeywordCountChange}
+            chapters={chapters}
+            onOpenChapterSettings={() => setIsChapterSettingsOpen(true)}
           />
         ) : (
           <TeacherQuiz
@@ -361,6 +408,7 @@ export default function App() {
             isMuted={isMuted}
             onToggleMute={handleToggleMute}
             season={season}
+            chapter={currentChapter}
           />
         )}
       </main>
@@ -370,19 +418,12 @@ export default function App() {
         <p className="text-[#0369A1] font-bold text-xs sm:text-sm flex items-center gap-2">
           <span className={`w-2.5 h-2.5 rounded-full ${isSupabaseConfigured ? 'bg-emerald-500 animate-pulse' : 'bg-sky-500'}`} />
           <span>슈파베이스 리얼타임 엔진 {isSupabaseConfigured ? '연결됨' : '연동 대기 (로컬 모드)'}</span>
-          {isWinter && (
-            <span className="ml-2 px-2 py-0.5 rounded-md bg-white/80 text-sky-700 text-xs border border-sky-300">
-              ⛄ 겨울방학 모드 ON
-            </span>
-          )}
-          {isTraining && (
-            <span className="ml-2 px-2 py-0.5 rounded-md bg-white/80 text-purple-700 text-xs border border-purple-300">
-              🎓 교사 연수 모드 ON
-            </span>
-          )}
+          <span className="ml-2 px-2 py-0.5 rounded-md bg-white/90 text-[#0369A1] text-xs border border-sky-300 font-bold">
+            {currentChapter.emoji} {currentChapter.name} 모드 ON
+          </span>
         </p>
         <p className="text-[#0369A1] font-bold text-xs sm:text-sm opacity-60 text-right uppercase tracking-widest">
-          {isTraining ? 'TEACHER WORKSHOP QUIZ • TRAINING MODE' : `VACATION KEYWORD QUIZ • ${season.toUpperCase()} MODE`}
+          {currentChapter.name} QUIZ • {season.toUpperCase()} MODE
         </p>
       </footer>
 
@@ -390,6 +431,15 @@ export default function App() {
       <SupabaseGuideModal
         isOpen={isGuideOpen}
         onClose={() => setIsGuideOpen(false)}
+      />
+
+      {/* Chapter Titles & Settings Customization Modal */}
+      <ChapterSettingsModal
+        isOpen={isChapterSettingsOpen}
+        onClose={() => setIsChapterSettingsOpen(false)}
+        chapters={chapters}
+        onSave={handleSaveChapters}
+        activeMode={season}
       />
     </div>
   );

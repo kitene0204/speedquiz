@@ -2,7 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { Sparkles, CheckCircle2, Send, Edit3, Tag, Snowflake, Sun, GraduationCap, Plus, Minus, Trash2, Sliders } from 'lucide-react';
 import { submitQuizResponse } from '../lib/supabase';
 import { playPopSound } from '../lib/sound';
-import { VacationSeason } from '../types';
+import { VacationSeason, ChapterConfig, DEFAULT_CHAPTERS } from '../types';
 
 const SUMMER_TAGS = [
   '🏖️ 워터파크',
@@ -59,6 +59,7 @@ interface StudentFormProps {
   onToggleSeason?: (newSeason: VacationSeason) => void;
   initialKeywordCount?: number;
   onKeywordCountChange?: (count: number) => void;
+  chapter?: ChapterConfig;
 }
 
 export function StudentForm({ 
@@ -66,10 +67,12 @@ export function StudentForm({
   season = 'summer', 
   onToggleSeason,
   initialKeywordCount = 3,
-  onKeywordCountChange
+  onKeywordCountChange,
+  chapter,
 }: StudentFormProps) {
   const isWinter = season === 'winter';
   const isTraining = season === 'training';
+  const currentChapter = chapter || DEFAULT_CHAPTERS[season];
   const popularTags = isTraining ? TEACHER_TRAINING_TAGS : isWinter ? WINTER_TAGS : SUMMER_TAGS;
 
   // Determine starting question/keyword count from URL query (?count= or ?keywords=), prop, or fallback 3
@@ -249,14 +252,14 @@ export function StudentForm({
       {/* Student/Teacher Participant Form Box */}
       <div 
         className={`bg-white rounded-[40px] sm:rounded-[48px] shadow-[0_20px_0_0_#0EA5E9] border-6 sm:border-8 overflow-hidden transition-all ${
-          isTraining ? 'border-[#DDD6FE]' : isWinter ? 'border-[#BAE6FD]' : 'border-[#FEF08A]'
+          isTraining ? 'border-[#88D4A8]' : isWinter ? 'border-[#BAE6FD]' : 'border-[#FEF08A]'
         }`}
       >
         {/* Header Ribbon */}
         <div 
           className={`p-6 sm:p-8 text-center relative border-b-4 ${
             isTraining 
-              ? 'bg-[#FAF5FF] border-[#E9D5FF]' 
+              ? 'bg-[#F2FBF5] border-[#B7E2C9]' 
               : isWinter 
               ? 'bg-[#E0F2FE] border-[#BAE6FD]' 
               : 'bg-[#FEF9C3] border-[#FEF08A]'
@@ -270,48 +273,31 @@ export function StudentForm({
                 onClick={toggleNextSeason}
                 className={`px-3 py-1 rounded-xl text-xs font-black border transition-all flex items-center gap-1 shadow-xs cursor-pointer ${
                   isTraining
-                    ? 'bg-white text-purple-800 border-purple-300 hover:bg-purple-50'
+                    ? 'bg-white text-[#006633] border-[#88D4A8] hover:bg-[#E8F6ED]'
                     : isWinter 
                     ? 'bg-white text-sky-800 border-sky-300 hover:bg-sky-50' 
                     : 'bg-white text-amber-900 border-amber-300 hover:bg-amber-50'
                 }`}
                 title="모드 전환 (여름 ➔ 겨울 ➔ 교사 연수)"
               >
-                {isTraining ? (
-                  <>
-                    <GraduationCap className="w-3.5 h-3.5 text-purple-600" />
-                    <span>연수 모드</span>
-                  </>
-                ) : isWinter ? (
-                  <>
-                    <Snowflake className="w-3.5 h-3.5 text-sky-500" />
-                    <span>겨울 모드</span>
-                  </>
-                ) : (
-                  <>
-                    <Sun className="w-3.5 h-3.5 text-amber-500" />
-                    <span>여름 모드</span>
-                  </>
-                )}
+                <span>{currentChapter.emoji} {currentChapter.name} 모드</span>
               </button>
             </div>
           )}
 
           <div className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-white font-black text-xs mb-3 ${
-            isTraining ? 'bg-purple-600 shadow-[0_2px_0_0_#7C3AED]' : 'bg-[#0EA5E9] shadow-[0_2px_0_0_#0284C7]'
+            isTraining ? 'bg-[#006633] shadow-[0_2px_0_0_#003D1E]' : 'bg-[#0EA5E9] shadow-[0_2px_0_0_#0284C7]'
           }`}>
             {isTraining ? <GraduationCap className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
             <span>
-              {isTraining ? '선생님 참여 화면 (교사 연수 🎓)' : isWinter ? '학생 참여 화면 (겨울방학 ⛄)' : '학생 참여 화면 (방학 🏖️)'}
+              {isTraining ? '선생님 참여 화면' : '학생 참여 화면'} ({currentChapter.name} {currentChapter.emoji})
             </span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-black text-[#0369A1] tracking-tight">
-            {isTraining ? '선생님의 경험을 맞춰봐! 🎓💡' : isWinter ? '내 겨울방학을 맞춰봐! ⛄❄️' : '내 방학을 맞춰봐! 🏖️'}
+            {currentChapter.title} {currentChapter.emoji}
           </h1>
           <p className="text-xs sm:text-sm font-bold text-[#0369A1]/70 mt-2 max-w-md mx-auto">
-            {isTraining
-              ? '최근 경험한 특별한 일, 취미, 교실 에피소드, 여행 키워드를 적어보세요. 동료 선생님들이 키워드만 보고 누구의 이야기인지 맞힐 거예요!'
-              : `나의 신났던 ${isWinter ? '겨울방학' : '방학'} 키워드를 적어보세요. 친구들이 키워드만 보고 누구의 이야기인지 맞힐 거예요!`}
+            {currentChapter.description}
           </p>
         </div>
 
@@ -465,7 +451,7 @@ export function StudentForm({
                       className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all border cursor-pointer ${
                         keywords.length === num
                           ? isTraining
-                            ? 'bg-purple-600 text-white border-purple-700 shadow-xs'
+                            ? 'bg-[#006633] text-white border-[#004D26] shadow-xs'
                             : 'bg-[#0EA5E9] text-white border-[#0284C7] shadow-xs'
                           : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                       }`}
@@ -553,7 +539,7 @@ export function StudentForm({
                 disabled={isSubmitting}
                 className={`w-full py-4 px-6 rounded-2xl text-white font-black text-lg sm:text-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 ${
                   isTraining
-                    ? 'bg-purple-600 hover:bg-purple-700 shadow-[0_8px_0_0_#6D28D9] hover:translate-y-1 hover:shadow-[0_4px_0_0_#6D28D9]'
+                    ? 'bg-[#006633] hover:bg-[#00542A] shadow-[0_8px_0_0_#003D1E] hover:translate-y-1 hover:shadow-[0_4px_0_0_#003D1E]'
                     : 'bg-[#0EA5E9] hover:bg-[#0284C7] shadow-[0_8px_0_0_#0284C7] hover:translate-y-1 hover:shadow-[0_4px_0_0_#0284C7]'
                 }`}
               >
@@ -562,7 +548,7 @@ export function StudentForm({
                   {isSubmitting 
                     ? (isTraining ? '연수 진행 화면으로 전송 중...' : '선생님 화면으로 전송 중...') 
                     : isTraining 
-                    ? '선생님 경험 키워드 제출하기! 🎓' 
+                    ? '선생님 경험 키워드 제출하기! 🎾' 
                     : `${isWinter ? '겨울방학' : '방학'} 키워드 제출하기!`}
                 </span>
               </button>
