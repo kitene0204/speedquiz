@@ -2,7 +2,7 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import { QuizResponse, VacationSeason } from '../types';
 
 // ============================================================================
-// [필수 설정] 선생님이 알려주신 정확한 'fg' 주소로 수정 완료! (제 실수입니다 ㅠㅠ)
+// [필수 설정] 올바른 프로젝트 URL('fg')과 새로운 Publishable Key 반영
 // ============================================================================
 const PORTAL_URL = 'https://lqajnsqoovngfgabalkj.supabase.co';
 const PORTAL_ANON_KEY = 'sb_publishable_DcAlnHgLYSd92ICS66z3RA_DvrzyPhX';
@@ -291,3 +291,24 @@ export function subscribeToQuizChanges(
     }
   };
 }
+
+// 이 부분이 빠져서 에러가 났습니다. 다시 복구 완료!
+export const SUPABASE_SQL_SCHEMA = `-- 1. quiz_responses 테이블 생성
+CREATE TABLE quiz_responses (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+  student_name TEXT NOT NULL,
+  keywords TEXT[] NOT NULL,
+  is_shown BOOLEAN DEFAULT false NOT NULL
+);
+
+-- 2. Row Level Security (RLS) 활성화
+ALTER TABLE quiz_responses ENABLE ROW LEVEL SECURITY;
+
+-- 3. 학생(익명) 및 교사 읽기/쓰기/수정/삭제 권한 부여
+CREATE POLICY "Enable all access for quiz_responses" ON quiz_responses
+  FOR ALL USING (true) WITH CHECK (true);
+
+-- 4. 실시간 (Realtime) 동기화 활성화
+ALTER PUBLICATION supabase_realtime ADD TABLE quiz_responses;
+`;
