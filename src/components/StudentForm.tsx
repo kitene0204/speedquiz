@@ -252,14 +252,14 @@ export function StudentForm({
       {/* Student/Teacher Participant Form Box */}
       <div 
         className={`bg-white rounded-[40px] sm:rounded-[48px] shadow-[0_20px_0_0_#0EA5E9] border-6 sm:border-8 overflow-hidden transition-all ${
-          isTraining ? 'border-[#88D4A8]' : isWinter ? 'border-[#BAE6FD]' : 'border-[#FEF08A]'
+          isTraining ? 'border-[#8ED1A8]' : isWinter ? 'border-[#BAE6FD]' : 'border-[#FEF08A]'
         }`}
       >
         {/* Header Ribbon */}
         <div 
           className={`p-6 sm:p-8 text-center relative border-b-4 ${
             isTraining 
-              ? 'bg-[#F2FBF5] border-[#B7E2C9]' 
+              ? 'bg-[#F2FBF5] border-[#B2DFCA]' 
               : isWinter 
               ? 'bg-[#E0F2FE] border-[#BAE6FD]' 
               : 'bg-[#FEF9C3] border-[#FEF08A]'
@@ -273,7 +273,7 @@ export function StudentForm({
                 onClick={toggleNextSeason}
                 className={`px-3 py-1 rounded-xl text-xs font-black border transition-all flex items-center gap-1 shadow-xs cursor-pointer ${
                   isTraining
-                    ? 'bg-white text-[#006633] border-[#88D4A8] hover:bg-[#E8F6ED]'
+                    ? 'bg-white text-[#1E6D44] border-[#8ED1A8] hover:bg-[#EBF6F0]'
                     : isWinter 
                     ? 'bg-white text-sky-800 border-sky-300 hover:bg-sky-50' 
                     : 'bg-white text-amber-900 border-amber-300 hover:bg-amber-50'
@@ -286,7 +286,7 @@ export function StudentForm({
           )}
 
           <div className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-white font-black text-xs mb-3 ${
-            isTraining ? 'bg-[#006633] shadow-[0_2px_0_0_#003D1E]' : 'bg-[#0EA5E9] shadow-[0_2px_0_0_#0284C7]'
+            isTraining ? 'bg-[#2A8255] shadow-[0_2px_0_0_#1B5D3A]' : 'bg-[#0EA5E9] shadow-[0_2px_0_0_#0284C7]'
           }`}>
             {isTraining ? <GraduationCap className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
             <span>
@@ -451,7 +451,7 @@ export function StudentForm({
                       className={`px-2.5 py-1 rounded-lg text-xs font-black transition-all border cursor-pointer ${
                         keywords.length === num
                           ? isTraining
-                            ? 'bg-[#006633] text-white border-[#004D26] shadow-xs'
+                            ? 'bg-[#2A8255] text-white border-[#236F48] shadow-xs'
                             : 'bg-[#0EA5E9] text-white border-[#0284C7] shadow-xs'
                           : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                       }`}
@@ -539,7 +539,7 @@ export function StudentForm({
                 disabled={isSubmitting}
                 className={`w-full py-4 px-6 rounded-2xl text-white font-black text-lg sm:text-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 ${
                   isTraining
-                    ? 'bg-[#006633] hover:bg-[#00542A] shadow-[0_8px_0_0_#003D1E] hover:translate-y-1 hover:shadow-[0_4px_0_0_#003D1E]'
+                    ? 'bg-[#2A8255] hover:bg-[#236F48] shadow-[0_8px_0_0_#1B5D3A] hover:translate-y-1 hover:shadow-[0_4px_0_0_#1B5D3A]'
                     : 'bg-[#0EA5E9] hover:bg-[#0284C7] shadow-[0_8px_0_0_#0284C7] hover:translate-y-1 hover:shadow-[0_4px_0_0_#0284C7]'
                 }`}
               >

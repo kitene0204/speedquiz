@@ -119,13 +119,13 @@ export function TeacherLobby({
       {/* Top Banner / Classroom Title */}
       <div 
         className={`bg-white rounded-[40px] sm:rounded-[48px] shadow-[0_16px_0_0_#0EA5E9] border-6 sm:border-8 overflow-hidden transition-colors ${
-          isTraining ? 'border-[#88D4A8]' : isWinter ? 'border-[#BAE6FD]' : 'border-[#FEF08A]'
+          isTraining ? 'border-[#8ED1A8]' : isWinter ? 'border-[#BAE6FD]' : 'border-[#FEF08A]'
         }`}
       >
         <div 
           className={`p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left transition-colors border-b-4 ${
             isTraining 
-              ? 'bg-[#F2FBF5] border-[#B7E2C9]' 
+              ? 'bg-[#F2FBF5] border-[#B2DFCA]' 
               : isWinter 
               ? 'bg-[#E0F2FE] border-[#BAE6FD]' 
               : 'bg-[#FEF9C3] border-[#FEF08A]'
@@ -135,7 +135,7 @@ export function TeacherLobby({
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
               <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-white font-black text-xs ${
                 isTraining 
-                  ? 'bg-[#006633] shadow-[0_2px_0_0_#003D1E]' 
+                  ? 'bg-[#2A8255] shadow-[0_2px_0_0_#1B5D3A]' 
                   : 'bg-[#0EA5E9] shadow-[0_2px_0_0_#0284C7]'
               }`}>
                 {isTraining ? <GraduationCap className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
@@ -148,7 +148,7 @@ export function TeacherLobby({
                 onClick={toggleSeasonMode}
                 className={`px-3 py-1 rounded-full text-xs font-black border transition-all cursor-pointer ${
                   isTraining
-                    ? 'bg-[#E8F6ED] text-[#006633] border-[#88D4A8] hover:bg-[#DCF2E4]'
+                    ? 'bg-[#EBF6F0] text-[#1E6D44] border-[#8ED1A8] hover:bg-[#DDF0E4]'
                     : isWinter 
                     ? 'bg-white text-sky-700 border-sky-300 hover:bg-sky-50' 
                     : 'bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200'
@@ -212,7 +212,7 @@ export function TeacherLobby({
               onClick={onSwitchToStudent}
               className={`px-4 py-3 rounded-2xl text-white font-black text-xs sm:text-sm transition-all flex items-center gap-1.5 cursor-pointer ${
                 isTraining
-                  ? 'bg-[#006633] hover:bg-[#00542A] shadow-[0_4px_0_0_#003D1E]'
+                  ? 'bg-[#2A8255] hover:bg-[#236F48] shadow-[0_4px_0_0_#1B5D3A]'
                   : 'bg-[#0EA5E9] hover:bg-[#0284C7] shadow-[0_4px_0_0_#0284C7]'
               }`}
             >
@@ -228,12 +228,12 @@ export function TeacherLobby({
         {/* Left Column: QR Code Card (Big for classroom/training projection) */}
         <div 
           className={`lg:col-span-5 bg-white rounded-[36px] sm:rounded-[44px] p-6 sm:p-8 shadow-[0_16px_0_0_#0EA5E9] border-6 flex flex-col items-center text-center space-y-5 ${
-            isTraining ? 'border-[#88D4A8]' : isWinter ? 'border-[#BAE6FD]' : 'border-[#FEF08A]'
+            isTraining ? 'border-[#8ED1A8]' : isWinter ? 'border-[#BAE6FD]' : 'border-[#FEF08A]'
           }`}
         >
           <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-black border-2 ${
             isTraining 
-              ? 'bg-[#E8F6ED] text-[#006633] border-[#88D4A8]' 
+              ? 'bg-[#EBF6F0] text-[#1E6D44] border-[#8ED1A8]' 
               : 'bg-[#BAE6FD] text-[#0369A1] border-[#0EA5E9]/20'
           }`}>
             <span>
@@ -251,7 +251,7 @@ export function TeacherLobby({
           <div 
             id="qr-code-display-card"
             className={`p-5 sm:p-6 rounded-3xl border-4 shadow-[0_8px_0_0_#BAE6FD] flex items-center justify-center transition-transform hover:scale-[1.02] ${
-              isTraining ? 'bg-[#F2FBF5] border-[#88D4A8]' : 'bg-[#F0F9FF] border-[#BAE6FD]'
+              isTraining ? 'bg-[#F2FBF5] border-[#8ED1A8]' : 'bg-[#F0F9FF] border-[#BAE6FD]'
             }`}
           >
             <QRCodeSVG
@@ -300,7 +300,7 @@ export function TeacherLobby({
             id="question-count-adjuster"
             className={`w-full rounded-3xl p-4 sm:p-5 border-3 text-left space-y-3 transition-colors ${
               isTraining 
-                ? 'bg-[#F2FBF5] border-[#88D4A8]' 
+                ? 'bg-[#F2FBF5] border-[#8ED1A8]' 
                 : isWinter 
                 ? 'bg-[#F0F9FF] border-[#BAE6FD]' 
                 : 'bg-[#FEFCE8] border-[#FEF08A]'
@@ -308,14 +308,14 @@ export function TeacherLobby({
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Sliders className={`w-4 h-4 ${isTraining ? 'text-[#006633]' : 'text-[#0EA5E9]'}`} />
+                <Sliders className={`w-4 h-4 ${isTraining ? 'text-[#2A8255]' : 'text-[#0EA5E9]'}`} />
                 <span className="font-black text-sm sm:text-base text-[#0369A1]">
                   문항 수 조절 (키워드 개수)
                 </span>
               </div>
               <span className={`px-3 py-1 rounded-full text-xs font-black border-2 shadow-xs ${
                 isTraining
-                  ? 'bg-[#006633] text-white border-[#004D26]'
+                  ? 'bg-[#2A8255] text-white border-[#236F48]'
                   : 'bg-[#0EA5E9] text-white border-[#0284C7]'
               }`}>
                 기본 {keywordCount}개
@@ -381,7 +381,7 @@ export function TeacherLobby({
                     className={`py-1.5 rounded-xl font-black text-xs transition-all border-2 cursor-pointer ${
                       keywordCount === num
                         ? isTraining
-                          ? 'bg-[#006633] text-white border-[#004D26] shadow-xs'
+                          ? 'bg-[#2A8255] text-white border-[#236F48] shadow-xs'
                           : 'bg-[#0EA5E9] text-white border-[#0284C7] shadow-xs'
                         : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
                     }`}
@@ -399,14 +399,14 @@ export function TeacherLobby({
           {/* Real-time Status Card */}
           <div 
             className={`bg-white rounded-[36px] sm:rounded-[44px] p-6 sm:p-8 shadow-[0_16px_0_0_#0EA5E9] border-6 space-y-6 ${
-              isTraining ? 'border-[#88D4A8]' : isWinter ? 'border-[#BAE6FD]' : 'border-[#FEF08A]'
+              isTraining ? 'border-[#8ED1A8]' : isWinter ? 'border-[#BAE6FD]' : 'border-[#FEF08A]'
             }`}
           >
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b-2 border-slate-100">
               <div className="flex items-center gap-3">
                 <div className={`w-14 h-14 rounded-2xl flex items-center justify-center font-black border-2 shadow-[0_4px_0_0_#0EA5E9] ${
                   isTraining 
-                    ? 'bg-[#E8F6ED] text-[#006633] border-[#88D4A8]' 
+                    ? 'bg-[#EBF6F0] text-[#1E6D44] border-[#8ED1A8]' 
                     : 'bg-[#BAE6FD] text-[#0369A1] border-[#0EA5E9]/40'
                 }`}>
                   {isTraining 
@@ -435,7 +435,7 @@ export function TeacherLobby({
               <div 
                 className={`flex items-baseline gap-1.5 px-6 py-3 rounded-2xl self-start sm:self-auto border-3 shadow-xs ${
                   isTraining
-                    ? 'bg-[#F2FBF5] border-[#B7E2C9] shadow-[0_4px_0_0_#B7E2C9]'
+                    ? 'bg-[#F2FBF5] border-[#B2DFCA] shadow-[0_4px_0_0_#B2DFCA]'
                     : isWinter 
                     ? 'bg-[#E0F2FE] border-[#BAE6FD] shadow-[0_4px_0_0_#BAE6FD]' 
                     : 'bg-[#FEF9C3] border-[#FEF08A] shadow-[0_4px_0_0_#FEF08A]'
@@ -456,7 +456,7 @@ export function TeacherLobby({
                 disabled={totalCount === 0}
                 className={`w-full py-5 px-6 rounded-2xl text-white font-black text-xl sm:text-2xl transition-all flex items-center justify-center gap-3 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer ${
                   isTraining
-                    ? 'bg-[#006633] hover:bg-[#00542A] shadow-[0_8px_0_0_#003D1E] hover:translate-y-1 hover:shadow-[0_4px_0_0_#003D1E]'
+                    ? 'bg-[#2A8255] hover:bg-[#236F48] shadow-[0_8px_0_0_#1B5D3A] hover:translate-y-1 hover:shadow-[0_4px_0_0_#1B5D3A]'
                     : 'bg-[#22C55E] hover:bg-[#16A34A] shadow-[0_8px_0_0_#16A34A] hover:translate-y-1 hover:shadow-[0_4px_0_0_#16A34A]'
                 }`}
               >
@@ -519,7 +519,7 @@ export function TeacherLobby({
           {/* Participant List Preview Card */}
           <div 
             className={`bg-white rounded-[36px] p-6 shadow-[0_12px_0_0_#0EA5E9] border-6 space-y-4 ${
-              isTraining ? 'border-[#88D4A8]' : isWinter ? 'border-[#BAE6FD]' : 'border-[#FEF08A]'
+              isTraining ? 'border-[#8ED1A8]' : isWinter ? 'border-[#BAE6FD]' : 'border-[#FEF08A]'
             }`}
           >
             <div className="flex items-center justify-between">

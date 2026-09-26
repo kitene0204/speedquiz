@@ -144,7 +144,7 @@ export function ChapterSettingsModal({
             }}
             className={`flex items-center gap-2 px-4 py-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer whitespace-nowrap ${
               activeTab === 'training'
-                ? 'bg-[#006633] text-white shadow-[0_3px_0_0_#003D1E]'
+                ? 'bg-[#2A8255] text-white shadow-[0_3px_0_0_#1B5D3A]'
                 : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
             }`}
           >
@@ -158,7 +158,7 @@ export function ChapterSettingsModal({
           {/* Quick Info Badge */}
           <div className={`p-4 rounded-2xl border-2 flex items-center justify-between gap-3 ${
             activeTab === 'training'
-              ? 'bg-[#EAF5EE] border-[#88D4A8] text-[#006633]'
+              ? 'bg-[#EBF6F0] border-[#8ED1A8] text-[#1E6D44]'
               : activeTab === 'winter'
               ? 'bg-[#EFF6FF] border-[#BFDBFE] text-sky-900'
               : 'bg-[#FEFCE8] border-[#FEF08A] text-amber-900'
@@ -293,7 +293,7 @@ export function ChapterSettingsModal({
                     {currentConfig.title || '제목을 입력하세요'}
                   </span>
                   <span className={`px-2 py-0.5 rounded-full text-white text-[10px] font-bold ${
-                    activeTab === 'training' ? 'bg-[#006633]' : activeTab === 'winter' ? 'bg-sky-500' : 'bg-[#0EA5E9]'
+                    activeTab === 'training' ? 'bg-[#2A8255]' : activeTab === 'winter' ? 'bg-sky-500' : 'bg-[#0EA5E9]'
                   }`}>
                     {currentConfig.badge || '뱃지'}
                   </span>

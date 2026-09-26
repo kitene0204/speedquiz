@@ -179,12 +179,12 @@ export function TeacherQuiz({
       <div className="max-w-5xl mx-auto w-full px-4 py-8 animate-fadeIn">
         <div 
           className={`bg-white rounded-[40px] sm:rounded-[48px] shadow-[0_20px_0_0_#0EA5E9] flex flex-col overflow-hidden border-6 sm:border-8 p-6 sm:p-12 text-center space-y-8 ${
-            isTraining ? 'border-[#88D4A8]' : isWinter ? 'border-[#BAE6FD]' : 'border-[#FEF08A]'
+            isTraining ? 'border-[#8ED1A8]' : isWinter ? 'border-[#BAE6FD]' : 'border-[#FEF08A]'
           }`}
         >
           <div className={`w-24 h-24 mx-auto rounded-3xl flex items-center justify-center rotate-3 border-4 text-4xl ${
             isTraining 
-              ? 'bg-[#E8F6ED] text-[#006633] shadow-[0_8px_0_0_#88D4A8] border-[#B7E2C9]' 
+              ? 'bg-[#EBF6F0] text-[#1E6D44] shadow-[0_8px_0_0_#8ED1A8] border-[#B2DFCA]' 
               : 'bg-[#FEF08A] text-[#0369A1] shadow-[0_8px_0_0_#FACC15] border-[#FDE047]'
           }`}>
             {isTraining ? '🎓' : isWinter ? '⛄' : '🏆'}
@@ -196,7 +196,7 @@ export function TeacherQuiz({
             </h1>
             <p className="text-slate-600 text-base sm:text-lg max-w-lg mx-auto font-bold">
               {isTraining ? (
-                <>참여하신 선생님 <strong className="text-[#006633]">{totalCount}분</strong>의 경험 키워드를 모두 함께 나누었습니다!</>
+                <>참여하신 선생님 <strong className="text-[#1E6D44]">{totalCount}분</strong>의 경험 키워드를 모두 함께 나누었습니다!</>
               ) : (
                 <>우리 반 친구 <strong className="text-[#0369A1]">{totalCount}명</strong>의 {currentChapter.name} 키워드를 모두 맞혔습니다!</>
               )}
@@ -249,7 +249,7 @@ export function TeacherQuiz({
               onClick={handleResetAllQuiz}
               className={`py-4 px-8 rounded-2xl text-white font-black text-xl transition-all active:translate-y-2 active:shadow-none flex items-center justify-center gap-2 cursor-pointer ${
                 isTraining
-                  ? 'bg-[#006633] hover:bg-[#00542A] shadow-[0_8px_0_0_#003D1E] hover:translate-y-1 hover:shadow-[0_4px_0_0_#003D1E]'
+                  ? 'bg-[#2A8255] hover:bg-[#236F48] shadow-[0_8px_0_0_#1B5D3A] hover:translate-y-1 hover:shadow-[0_4px_0_0_#1B5D3A]'
                   : 'bg-[#0EA5E9] hover:bg-[#0284C7] shadow-[0_8px_0_0_#0284C7] hover:translate-y-1 hover:shadow-[0_4px_0_0_#0284C7]'
               }`}
             >
@@ -279,14 +279,14 @@ export function TeacherQuiz({
       <div 
         id="quiz-main-stage"
         className={`bg-white rounded-[40px] sm:rounded-[48px] shadow-[0_20px_0_0_#0EA5E9] flex flex-col overflow-hidden border-6 sm:border-8 ${
-          isTraining ? 'border-[#88D4A8]' : isWinter ? 'border-[#BAE6FD]' : 'border-[#FEF08A]'
+          isTraining ? 'border-[#8ED1A8]' : isWinter ? 'border-[#BAE6FD]' : 'border-[#FEF08A]'
         }`}
       >
         {/* Header Bar */}
         <header 
           className={`min-h-20 sm:h-24 flex flex-wrap items-center justify-between px-6 sm:px-12 py-3 border-b-4 gap-4 ${
             isTraining 
-              ? 'bg-[#F2FBF5] border-[#B7E2C9]' 
+              ? 'bg-[#F2FBF5] border-[#B2DFCA]' 
               : isWinter 
               ? 'bg-[#E0F2FE] border-[#BAE6FD]' 
               : 'bg-[#FEF9C3] border-[#FEF08A]'
@@ -294,7 +294,7 @@ export function TeacherQuiz({
         >
           <div className="flex items-center gap-4">
             <div className={`text-white px-5 sm:px-6 py-1.5 sm:py-2 rounded-full font-bold text-base sm:text-xl ${
-              isTraining ? 'bg-[#006633] shadow-[0_3px_0_0_#003D1E]' : 'bg-[#0EA5E9] shadow-[0_3px_0_0_#0284C7]'
+              isTraining ? 'bg-[#2A8255] shadow-[0_3px_0_0_#1B5D3A]' : 'bg-[#0EA5E9] shadow-[0_3px_0_0_#0284C7]'
             }`}>
               제 {currentNumber} / {totalCount} 번
             </div>
@@ -430,7 +430,7 @@ export function TeacherQuiz({
                 onClick={handleRevealAnswer}
                 className={`text-white px-8 sm:px-12 py-3.5 sm:py-4 rounded-2xl font-black text-xl sm:text-2xl hover:translate-y-1 active:translate-y-2 active:shadow-none transition-all cursor-pointer ${
                   isTraining
-                    ? 'bg-[#006633] hover:bg-[#00542A] shadow-[0_8px_0_0_#003D1E] hover:shadow-[0_4px_0_0_#003D1E]'
+                    ? 'bg-[#2A8255] hover:bg-[#236F48] shadow-[0_8px_0_0_#1B5D3A] hover:shadow-[0_4px_0_0_#1B5D3A]'
                     : 'bg-[#0EA5E9] text-white shadow-[0_8px_0_0_#0284C7] hover:shadow-[0_4px_0_0_#0284C7]'
                 }`}
               >

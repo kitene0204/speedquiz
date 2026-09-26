@@ -216,7 +216,7 @@ export default function App() {
             <div 
               className={`w-12 h-12 rounded-2xl text-white flex items-center justify-center font-black border-2 border-white transition-all text-2xl ${
                 isTraining
-                  ? 'bg-[#006633] shadow-[0_4px_0_0_#003D1E]'
+                  ? 'bg-[#2A8255] shadow-[0_4px_0_0_#1B5D3A]'
                   : isWinter
                   ? 'bg-sky-500 shadow-[0_4px_0_0_#0284C7]'
                   : 'bg-[#0EA5E9] shadow-[0_4px_0_0_#0284C7]'
@@ -230,7 +230,7 @@ export default function App() {
                   {currentChapter.title}
                 </span>
                 <span className={`hidden sm:inline-block px-3 py-0.5 rounded-full text-white text-xs font-bold shadow-xs ${
-                  isTraining ? 'bg-[#006633]' : isWinter ? 'bg-sky-500' : 'bg-[#0EA5E9]'
+                  isTraining ? 'bg-[#2A8255]' : isWinter ? 'bg-sky-500' : 'bg-[#0EA5E9]'
                 }`}>
                   {currentChapter.badge}
                 </span>
@@ -247,7 +247,7 @@ export default function App() {
             <div 
               id="season-mode-toggle"
               className="flex items-center bg-white/95 p-1 rounded-2xl border-2 shadow-xs transition-colors"
-              style={{ borderColor: isTraining ? '#88D4A8' : isWinter ? '#93C5FD' : '#FEF08A' }}
+              style={{ borderColor: isTraining ? '#8ED1A8' : isWinter ? '#93C5FD' : '#FEF08A' }}
             >
               <button
                 id="season-tab-summer"
@@ -285,7 +285,7 @@ export default function App() {
                 onClick={() => handleSeasonChange('training')}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
                   season === 'training'
-                    ? 'bg-[#006633] text-white shadow-[0_2px_0_0_#003D1E]'
+                    ? 'bg-[#2A8255] text-white shadow-[0_2px_0_0_#1B5D3A]'
                     : 'text-slate-500 hover:text-slate-800'
                 }`}
                 title={`${chapters.training.name} 모드로 전환`}
@@ -298,7 +298,7 @@ export default function App() {
             {/* Role Switcher Tabs */}
             <div 
               className="flex items-center bg-white/95 p-1 rounded-2xl border-2 shadow-xs transition-colors"
-              style={{ borderColor: isTraining ? '#88D4A8' : isWinter ? '#93C5FD' : '#FEF08A' }}
+              style={{ borderColor: isTraining ? '#8ED1A8' : isWinter ? '#93C5FD' : '#FEF08A' }}
             >
               <button
                 id="role-tab-teacher"
@@ -306,7 +306,7 @@ export default function App() {
                 onClick={() => handleRoleChange('teacher')}
                 className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
                   role === 'teacher'
-                    ? (isTraining ? 'bg-[#006633] text-white shadow-[0_3px_0_0_#003D1E]' : 'bg-[#0EA5E9] text-white shadow-[0_3px_0_0_#0284C7]')
+                    ? (isTraining ? 'bg-[#2A8255] text-white shadow-[0_3px_0_0_#1B5D3A]' : 'bg-[#0EA5E9] text-white shadow-[0_3px_0_0_#0284C7]')
                     : 'text-[#0369A1] hover:bg-slate-100'
                 }`}
               >
@@ -319,7 +319,7 @@ export default function App() {
                 onClick={() => handleRoleChange('student')}
                 className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
                   role === 'student'
-                    ? (isTraining ? 'bg-[#006633] text-white shadow-[0_3px_0_0_#003D1E]' : 'bg-[#0EA5E9] text-white shadow-[0_3px_0_0_#0284C7]')
+                    ? (isTraining ? 'bg-[#2A8255] text-white shadow-[0_3px_0_0_#1B5D3A]' : 'bg-[#0EA5E9] text-white shadow-[0_3px_0_0_#0284C7]')
                     : 'text-[#0369A1] hover:bg-slate-100'
                 }`}
               >
