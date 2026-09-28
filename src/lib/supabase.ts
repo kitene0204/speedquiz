@@ -56,15 +56,6 @@ export function normalizeQuizResponse(item: any): QuizResponse {
     (k) => typeof k === 'string' && !k.startsWith('__SEASON:') && !k.startsWith('__META:')
   );
 
-  // 3. Fallback heuristic: If marked as 'summer' (or empty) but strongly resembles winter tags
-  if (!detectedSeason || detectedSeason === 'summer') {
-    const winterClues = ['눈사람', '스키', '썰매', '붕어빵', '군고구마', '호빵', '전기장판', '겨울', '눈싸움', '스케이트', '삿포로', '크리스마스', '온천'];
-    const matchesWinter = cleanKeywords.some(kw => winterClues.some(clue => kw.includes(clue)));
-    if (matchesWinter) {
-      detectedSeason = 'winter';
-    }
-  }
-
   return {
     id: item.id || `item-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
     created_at: item.created_at || new Date().toISOString(),
@@ -219,38 +210,49 @@ export async function submitQuizResponse(
 }
 
 export async function updateResponseSeason(id: string, newSeason: VacationSeason): Promise<boolean> {
+  let target: QuizResponse | undefined;
   const current = getLocalResponses();
-  const target = current.find(r => r.id === id);
-  if (!target) return false;
+  target = current.find(r => r.id === id);
 
-  const updatedRecord: QuizResponse = { ...target, season: newSeason };
-  const updatedList = current.map(item => item.id === id ? updatedRecord : item);
-  setLocalResponses(updatedList);
+  if (target) {
+    const updatedRecord: QuizResponse = { ...target, season: newSeason };
+    const updatedList = current.map(item => item.id === id ? updatedRecord : item);
+    setLocalResponses(updatedList);
+  }
 
   if (supabase) {
     try {
-      const cleanKeywords = target.keywords.filter(
-        k => typeof k === 'string' && !k.startsWith('__SEASON:') && !k.startsWith('__META:')
-      );
-      const dbKeywords = [...cleanKeywords, `__SEASON:${newSeason}__`];
+      if (!target) {
+        const { data } = await supabase.from('quiz_responses').select('*').eq('id', id).single();
+        if (data) {
+          target = normalizeQuizResponse(data);
+        }
+      }
 
-      // Try update with both season column and meta tag
-      const { error } = await supabase
-        .from('quiz_responses')
-        .update({
-          season: newSeason,
-          keywords: dbKeywords,
-        })
-        .eq('id', id);
+      if (target) {
+        const cleanKeywords = target.keywords.filter(
+          k => typeof k === 'string' && !k.startsWith('__SEASON:') && !k.startsWith('__META:')
+        );
+        const dbKeywords = [...cleanKeywords, `__SEASON:${newSeason}__`];
 
-      if (error) {
-        // Fallback: update keywords array only if season column does not exist
-        await supabase
+        // 1. Try update with both season column and keywords
+        const { error } = await supabase
           .from('quiz_responses')
           .update({
+            season: newSeason,
             keywords: dbKeywords,
           })
           .eq('id', id);
+
+        // 2. If season column is missing, update keywords only
+        if (error) {
+          await supabase
+            .from('quiz_responses')
+            .update({
+              keywords: dbKeywords,
+            })
+            .eq('id', id);
+        }
       }
     } catch (err) {
       console.warn('Supabase updateResponseSeason exception:', err);
@@ -266,11 +268,28 @@ export async function moveAllResponsesToSeason(
 ): Promise<number> {
   const current = getLocalResponses();
   const toMove = current.filter(r => (r.season || 'summer') === fromSeason);
-  if (toMove.length === 0) return 0;
 
   for (const item of toMove) {
     await updateResponseSeason(item.id, toSeason);
   }
+
+  // Also inspect Supabase directly so any non-local records are moved
+  if (supabase) {
+    try {
+      const { data } = await supabase.from('quiz_responses').select('*');
+      if (data && Array.isArray(data)) {
+        for (const raw of data) {
+          const norm = normalizeQuizResponse(raw);
+          if (norm.season === fromSeason && !toMove.some(m => m.id === norm.id)) {
+            await updateResponseSeason(norm.id, toSeason);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Error in moveAllResponsesToSeason supabase pass:', e);
+    }
+  }
+
   return toMove.length;
 }
 
@@ -296,19 +315,50 @@ export async function markResponseAsShown(id: string, isShown = true): Promise<b
   return true;
 }
 
-export async function deleteAllResponses(season?: VacationSeason): Promise<boolean> {
+export async function deleteSingleResponse(id: string): Promise<boolean> {
+  // 1. Delete from Supabase by exact ID (primary key)
   if (supabase) {
     try {
-      if (season) {
+      const { error } = await supabase
+        .from('quiz_responses')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        console.warn('Supabase deleteSingleResponse error:', error.message);
+      }
+    } catch (err) {
+      console.warn('Supabase deleteSingleResponse exception:', err);
+    }
+  }
+
+  // 2. Delete from local storage
+  const current = getLocalResponses();
+  const remaining = current.filter(item => item.id !== id);
+  setLocalResponses(remaining);
+  return true;
+}
+
+export async function deleteAllResponses(season?: VacationSeason): Promise<boolean> {
+  const current = getLocalResponses();
+  const targets = season
+    ? current.filter(item => (item.season || 'summer') === season)
+    : current;
+  const targetIds = targets.map(t => t.id);
+
+  if (supabase) {
+    try {
+      if (season && targetIds.length > 0) {
+        // Delete by IDs to guarantee success even if 'season' column does not exist in Supabase!
         const { error } = await supabase
           .from('quiz_responses')
           .delete()
-          .eq('season', season);
+          .in('id', targetIds);
 
         if (error) {
-          console.warn('Supabase delete by season error, fallback to client delete:', error.message);
+          console.warn('Supabase delete by IDs error:', error.message);
         }
-      } else {
+      } else if (!season) {
         const { error } = await supabase
           .from('quiz_responses')
           .delete()
@@ -323,7 +373,6 @@ export async function deleteAllResponses(season?: VacationSeason): Promise<boole
     }
   }
 
-  const current = getLocalResponses();
   if (season) {
     const remaining = current.filter(item => (item.season || 'summer') !== season);
     setLocalResponses(remaining);

@@ -23,11 +23,13 @@ import {
   Minus,
   Settings,
   ArrowRightLeft,
-  ArrowRight
+  ArrowRight,
+  X
 } from 'lucide-react';
 import { QuizResponse, VacationSeason, ChaptersSettings, DEFAULT_CHAPTERS } from '../types';
 import { 
   deleteAllResponses, 
+  deleteSingleResponse,
   resetShownStatusAll, 
   seedSampleResponses,
   updateResponseSeason,
@@ -153,6 +155,15 @@ export function TeacherLobby({
     playPopSound();
     if (onRefresh) onRefresh();
     setSelectedResponseForMove(null);
+  };
+
+  const handleDeleteSingle = async (itemId: string, studentName: string) => {
+    playPopSound();
+    if (confirm(`'${studentName}' 참여자의 응답을 삭제하시겠습니까?`)) {
+      await deleteSingleResponse(itemId);
+      playPopSound();
+      if (onRefresh) onRefresh();
+    }
   };
 
   const toggleSeasonMode = () => {
@@ -659,6 +670,14 @@ export function TeacherLobby({
                         title={`${item.student_name}의 응답 카테고리 변경`}
                       >
                         <ArrowRightLeft className="w-3 h-3" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteSingle(item.id, item.student_name)}
+                        className="opacity-40 group-hover:opacity-100 hover:text-rose-600 p-0.5 rounded-sm hover:bg-rose-100 transition-all cursor-pointer"
+                        title={`${item.student_name} 응답 삭제`}
+                      >
+                        <X className="w-3 h-3" />
                       </button>
                     </div>
                   );
