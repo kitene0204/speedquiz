@@ -1,14 +1,15 @@
+export type AppRole = 'teacher' | 'student';
+export type QuizMode = 'summer' | 'winter' | 'training';
+export type VacationSeason = QuizMode;
+
 export interface QuizResponse {
   id: string;
   created_at: string;
   student_name: string;
   keywords: string[];
   is_shown: boolean;
+  season?: VacationSeason;
 }
-
-export type AppRole = 'teacher' | 'student';
-export type QuizMode = 'summer' | 'winter' | 'training';
-export type VacationSeason = QuizMode;
 
 export interface SupabaseConfig {
   url: string;

@@ -43,7 +43,14 @@ export function getLocalResponses(): QuizResponse[] {
   try {
     const raw = localStorage.getItem(LOCAL_STORAGE_KEY);
     if (!raw) return [];
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed.map(item => ({
+        ...item,
+        season: item.season || 'summer',
+      }));
+    }
+    return [];
   } catch {
     return [];
   }
@@ -59,7 +66,9 @@ export function setLocalResponses(responses: QuizResponse[]): void {
   }
 }
 
-export async function fetchQuizResponses(): Promise<QuizResponse[]> {
+export async function fetchQuizResponses(season?: VacationSeason): Promise<QuizResponse[]> {
+  let allResponses: QuizResponse[] = [];
+
   if (supabase) {
     try {
       const { data, error } = await supabase
@@ -69,21 +78,32 @@ export async function fetchQuizResponses(): Promise<QuizResponse[]> {
 
       if (error) {
         console.warn('Supabase fetch error, falling back to local:', error.message);
-        return getLocalResponses();
+        allResponses = getLocalResponses();
+      } else if (data && Array.isArray(data)) {
+        allResponses = data.map(item => ({
+          ...item,
+          season: item.season || 'summer',
+        }));
       }
-      return data || [];
     } catch (err) {
       console.warn('Supabase fetch exception, falling back to local:', err);
-      return getLocalResponses();
+      allResponses = getLocalResponses();
     }
+  } else {
+    allResponses = getLocalResponses();
   }
 
-  return getLocalResponses();
+  if (season) {
+    return allResponses.filter(r => (r.season || 'summer') === season);
+  }
+
+  return allResponses;
 }
 
 export async function submitQuizResponse(
   studentName: string,
-  keywords: string[]
+  keywords: string[],
+  season: VacationSeason = 'summer'
 ): Promise<{ success: boolean; data?: QuizResponse; error?: string }> {
   const cleanName = studentName.trim();
   const cleanKeywords = keywords.map(k => k.trim()).filter(k => k.length > 0);
@@ -101,6 +121,7 @@ export async function submitQuizResponse(
     student_name: cleanName,
     keywords: cleanKeywords,
     is_shown: false,
+    season,
   };
 
   if (supabase) {
@@ -112,17 +133,38 @@ export async function submitQuizResponse(
           student_name: cleanName,
           keywords: cleanKeywords,
           is_shown: false,
+          season,
         })
         .select()
         .single();
 
       if (error) {
+        // If Supabase table doesn't have the season column yet, fallback gracefully
+        if (error.message && (error.message.includes('season') || error.code === '42703')) {
+          console.warn('Supabase table missing season column, inserting without it:', error.message);
+          const { data: fallbackData } = await supabase
+            .from('quiz_responses')
+            .insert({
+              id: newRecord.id,
+              student_name: cleanName,
+              keywords: cleanKeywords,
+              is_shown: false,
+            })
+            .select()
+            .single();
+
+          const savedRecord: QuizResponse = { ...(fallbackData || newRecord), season };
+          const current = getLocalResponses();
+          setLocalResponses([...current, savedRecord]);
+          return { success: true, data: savedRecord };
+        }
+
         console.warn('Supabase insert error, saving locally:', error.message);
         const current = getLocalResponses();
         setLocalResponses([...current, newRecord]);
         return { success: true, data: newRecord };
       }
-      return { success: true, data };
+      return { success: true, data: { ...data, season: data?.season || season } };
     } catch (err) {
       console.warn('Supabase insert exception, saving locally:', err);
       const current = getLocalResponses();
@@ -159,40 +201,69 @@ export async function markResponseAsShown(id: string, isShown = true): Promise<b
   return true;
 }
 
-export async function deleteAllResponses(): Promise<boolean> {
+export async function deleteAllResponses(season?: VacationSeason): Promise<boolean> {
   if (supabase) {
     try {
-      const { error } = await supabase
-        .from('quiz_responses')
-        .delete()
-        .neq('id', '00000000-0000-0000-0000-000000000000');
+      if (season) {
+        const { error } = await supabase
+          .from('quiz_responses')
+          .delete()
+          .eq('season', season);
 
-      if (error) {
-        console.warn('Supabase delete error:', error.message);
+        if (error) {
+          console.warn('Supabase delete by season error, fallback to client delete:', error.message);
+        }
+      } else {
+        const { error } = await supabase
+          .from('quiz_responses')
+          .delete()
+          .neq('id', '00000000-0000-0000-0000-000000000000');
+
+        if (error) {
+          console.warn('Supabase delete error:', error.message);
+        }
       }
     } catch (err) {
       console.warn('Supabase delete exception:', err);
     }
   }
 
-  setLocalResponses([]);
+  const current = getLocalResponses();
+  if (season) {
+    const remaining = current.filter(item => (item.season || 'summer') !== season);
+    setLocalResponses(remaining);
+  } else {
+    setLocalResponses([]);
+  }
   return true;
 }
 
-export async function resetShownStatusAll(): Promise<boolean> {
+export async function resetShownStatusAll(season?: VacationSeason): Promise<boolean> {
   if (supabase) {
     try {
-      await supabase
-        .from('quiz_responses')
-        .update({ is_shown: false })
-        .neq('id', '00000000-0000-0000-0000-000000000000');
+      if (season) {
+        await supabase
+          .from('quiz_responses')
+          .update({ is_shown: false })
+          .eq('season', season);
+      } else {
+        await supabase
+          .from('quiz_responses')
+          .update({ is_shown: false })
+          .neq('id', '00000000-0000-0000-0000-000000000000');
+      }
     } catch (err) {
       console.warn('Supabase reset status exception:', err);
     }
   }
 
   const current = getLocalResponses();
-  const updated = current.map(item => ({ ...item, is_shown: false }));
+  const updated = current.map(item => {
+    if (!season || (item.season || 'summer') === season) {
+      return { ...item, is_shown: false };
+    }
+    return item;
+  });
   setLocalResponses(updated);
   return true;
 }
@@ -229,7 +300,7 @@ export async function seedSampleResponses(season: VacationSeason = 'summer'): Pr
   const results: QuizResponse[] = [];
 
   for (const s of samples) {
-    const res = await submitQuizResponse(s.name, s.keywords);
+    const res = await submitQuizResponse(s.name, s.keywords, season);
     if (res.data) {
       results.push(res.data);
     }
@@ -299,8 +370,12 @@ CREATE TABLE quiz_responses (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
   student_name TEXT NOT NULL,
   keywords TEXT[] NOT NULL,
-  is_shown BOOLEAN DEFAULT false NOT NULL
+  is_shown BOOLEAN DEFAULT false NOT NULL,
+  season TEXT DEFAULT 'summer' NOT NULL
 );
+
+-- 기존에 이미 테이블을 생성하셨다면 아래 1줄만 SQL Editor에서 추가 실행해주세요:
+ALTER TABLE quiz_responses ADD COLUMN IF NOT EXISTS season TEXT DEFAULT 'summer' NOT NULL;
 
 -- 2. Row Level Security (RLS) 활성화
 ALTER TABLE quiz_responses ENABLE ROW LEVEL SECURITY;

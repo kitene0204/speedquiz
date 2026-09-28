@@ -98,12 +98,12 @@ export function TeacherLobby({
   };
 
   const handleResetShown = async () => {
-    await resetShownStatusAll();
+    await resetShownStatusAll(season);
     playPopSound();
   };
 
   const handleDeleteAll = async () => {
-    await deleteAllResponses();
+    await deleteAllResponses(season);
     setShowDeleteConfirm(false);
     playPopSound();
   };
@@ -593,9 +593,10 @@ export function TeacherLobby({
             <div className="w-14 h-14 rounded-2xl bg-rose-100 text-rose-600 flex items-center justify-center border-2 border-rose-300">
               <Trash2 className="w-7 h-7" />
             </div>
-            <h3 className="text-2xl font-black text-slate-900">모든 응답을 초기화하시겠습니까?</h3>
-            <p className="text-slate-600 text-sm font-bold">
-              현재 제출된 <strong className="text-rose-600">{totalCount}명</strong>의 {isTraining ? '선생님 경험 키워드' : '학생 방학 키워드'} 응답 데이터가 모두 삭제됩니다.
+            <h3 className="text-2xl font-black text-slate-900">[{currentChapter.name}] 응답 초기화</h3>
+            <p className="text-slate-600 text-sm font-bold leading-relaxed">
+              현재 <span className="text-[#0369A1]">[{currentChapter.name} {currentChapter.emoji}]</span> 챕터에 제출된 <strong className="text-rose-600">{totalCount}명</strong>의 응답 데이터가 삭제됩니다.<br />
+              <span className="text-xs text-slate-400 mt-1 inline-block">※ 다른 챕터(여름/겨울/연수)의 응답은 안전하게 유지됩니다.</span>
             </p>
             <div className="flex gap-3 pt-2">
               <button

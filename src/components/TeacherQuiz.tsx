@@ -156,7 +156,7 @@ export function TeacherQuiz({
   };
 
   const handleResetAllQuiz = async () => {
-    await resetShownStatusAll();
+    await resetShownStatusAll(season);
     playPopSound();
     setIsRevealed(false);
   };

@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { 
   fetchQuizResponses, 
   subscribeToQuizChanges, 
@@ -100,6 +100,27 @@ export default function App() {
   const isWinter = season === 'winter';
   const isTraining = season === 'training';
   const currentChapter = chapters[season] || DEFAULT_CHAPTERS[season];
+
+  // Category isolation: Filter responses specifically for the currently active chapter/season
+  const filteredResponses = useMemo(() => {
+    return responses.filter(r => (r.season || 'summer') === season);
+  }, [responses, season]);
+
+  // Response count per season for visual clarity in category tabs
+  const countsBySeason = useMemo(() => {
+    const counts: Record<VacationSeason, number> = {
+      summer: 0,
+      winter: 0,
+      training: 0,
+    };
+    for (const r of responses) {
+      const s = r.season || 'summer';
+      if (counts[s] !== undefined) {
+        counts[s]++;
+      }
+    }
+    return counts;
+  }, [responses]);
 
   const handleSaveChapters = (updated: ChaptersSettings) => {
     setChapters(updated);
@@ -258,10 +279,17 @@ export default function App() {
                     ? 'bg-amber-400 text-amber-950 shadow-[0_2px_0_0_#D97706]'
                     : 'text-slate-500 hover:text-slate-800'
                 }`}
-                title={`${chapters.summer.name} 모드로 전환`}
+                title={`${chapters.summer.name} 모드로 전환 (${countsBySeason.summer}명 응답)`}
               >
                 <Sun className="w-3.5 h-3.5 text-amber-600" />
                 <span>{chapters.summer.name} {chapters.summer.emoji}</span>
+                {countsBySeason.summer > 0 && (
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ml-0.5 ${
+                    season === 'summer' ? 'bg-amber-950/20 text-amber-950' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {countsBySeason.summer}
+                  </span>
+                )}
               </button>
 
               <button
@@ -273,10 +301,17 @@ export default function App() {
                     ? 'bg-sky-500 text-white shadow-[0_2px_0_0_#0284C7]'
                     : 'text-slate-500 hover:text-slate-800'
                 }`}
-                title={`${chapters.winter.name} 모드로 전환`}
+                title={`${chapters.winter.name} 모드로 전환 (${countsBySeason.winter}명 응답)`}
               >
                 <Snowflake className="w-3.5 h-3.5 text-white" />
                 <span>{chapters.winter.name} {chapters.winter.emoji}</span>
+                {countsBySeason.winter > 0 && (
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ml-0.5 ${
+                    season === 'winter' ? 'bg-white/30 text-white' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {countsBySeason.winter}
+                  </span>
+                )}
               </button>
 
               <button
@@ -288,10 +323,17 @@ export default function App() {
                     ? 'bg-[#2A8255] text-white shadow-[0_2px_0_0_#1B5D3A]'
                     : 'text-slate-500 hover:text-slate-800'
                 }`}
-                title={`${chapters.training.name} 모드로 전환`}
+                title={`${chapters.training.name} 모드로 전환 (${countsBySeason.training}명 응답)`}
               >
                 <GraduationCap className="w-4 h-4 text-emerald-200" />
                 <span>{chapters.training.name} {chapters.training.emoji}</span>
+                {countsBySeason.training > 0 && (
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ml-0.5 ${
+                    season === 'training' ? 'bg-white/30 text-white' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {countsBySeason.training}
+                  </span>
+                )}
               </button>
             </div>
 
@@ -387,7 +429,7 @@ export default function App() {
           />
         ) : teacherScreen === 'lobby' ? (
           <TeacherLobby
-            responses={responses}
+            responses={filteredResponses}
             onStartQuiz={() => setTeacherScreen('quiz')}
             onOpenSupabaseGuide={() => setIsGuideOpen(true)}
             onSwitchToStudent={() => handleRoleChange('student')}
@@ -403,7 +445,7 @@ export default function App() {
           />
         ) : (
           <TeacherQuiz
-            responses={responses}
+            responses={filteredResponses}
             onBackToLobby={() => setTeacherScreen('lobby')}
             isMuted={isMuted}
             onToggleMute={handleToggleMute}

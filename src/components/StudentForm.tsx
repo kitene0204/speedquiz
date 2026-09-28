@@ -216,7 +216,7 @@ export function StudentForm({
 
     setIsSubmitting(true);
     try {
-      const res = await submitQuizResponse(name, rawKeywords);
+      const res = await submitQuizResponse(name, rawKeywords, season);
       if (res.success) {
         playPopSound();
         setSubmittedData({
