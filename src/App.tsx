@@ -18,9 +18,9 @@ import { ChapterSettingsModal } from './components/ChapterSettingsModal';
 import { CreateCategoryModal } from './components/CreateCategoryModal';
 import { CategoryDropdown } from './components/CategoryDropdown';
 import { SnowEffect } from './components/SnowEffect';
-import { toggleMute, getMuteState } from './lib/sound';
+import { toggleMute, getMuteState, playPopSound } from './lib/sound';
 import { getChapterTheme } from './lib/theme';
-import { Users, Presentation, Database, HelpCircle, Settings } from 'lucide-react';
+import { Users, Presentation, Database, HelpCircle, Settings, Home } from 'lucide-react';
 
 const SEASON_STORAGE_KEY = 'vacation_quiz_season_v1';
 const KEYWORD_COUNT_STORAGE_KEY = 'vacation_quiz_keyword_count_v1';
@@ -229,6 +229,12 @@ export default function App() {
     setIsMuted(next);
   };
 
+  const handleGoHome = () => {
+    playPopSound();
+    handleRoleChange('teacher');
+    setTeacherScreen('lobby');
+  };
+
   return (
     <div 
       className={`min-h-screen flex flex-col transition-colors duration-300 ${
@@ -243,21 +249,32 @@ export default function App() {
         className={`sticky top-0 z-40 border-b-4 transition-colors duration-300 shadow-xs ${currentTheme.headerBg} ${currentTheme.headerBorder}`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-20 py-2 flex flex-wrap items-center justify-between gap-4">
-          {/* Logo */}
-          <div 
-            onClick={() => {
-              if (role === 'teacher') setTeacherScreen('lobby');
-            }}
-            className="flex items-center gap-3 cursor-pointer select-none"
-          >
-            <div 
-              className={`w-12 h-12 rounded-2xl text-white flex items-center justify-center font-black border-2 border-white transition-all text-2xl ${currentTheme.buttonActive}`}
+          {/* Left: Home Button & App Title */}
+          <div className="flex items-center gap-3 select-none">
+            <button
+              id="top-home-button"
+              type="button"
+              onClick={handleGoHome}
+              className={`relative w-12 h-12 rounded-2xl text-white flex items-center justify-center font-black border-2 border-white transition-all shadow-md hover:scale-105 active:scale-95 cursor-pointer group ${currentTheme.buttonActive}`}
+              title="홈(메인 화면)으로 이동"
+              aria-label="홈 화면으로 이동"
             >
-              {currentChapter.emoji}
-            </div>
-            <div>
+              <Home className="w-6 h-6 stroke-[2.5] text-white transition-transform group-hover:scale-110" />
+              <span 
+                className="absolute -bottom-1 -right-1 text-xs bg-white rounded-full p-0.5 shadow-xs border border-slate-200 leading-none"
+                title={`${currentChapter.name} 모드`}
+              >
+                {currentChapter.emoji}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={handleGoHome}
+              className="text-left cursor-pointer group focus:outline-hidden"
+              title="홈(메인 화면)으로 이동"
+            >
               <div className="flex items-center gap-2">
-                <span className="font-black text-xl sm:text-2xl text-[#0369A1] tracking-tight">
+                <span className="font-black text-xl sm:text-2xl text-[#0369A1] tracking-tight group-hover:text-[#0284C7] transition-colors">
                   {currentChapter.title}
                 </span>
                 <span className={`hidden sm:inline-block px-3 py-0.5 rounded-full text-white text-xs font-bold shadow-xs ${currentTheme.buttonActive}`}>
@@ -267,7 +284,7 @@ export default function App() {
               <p className="text-xs font-bold text-[#0369A1]/70 hidden md:block">
                 {currentChapter.description}
               </p>
-            </div>
+            </button>
           </div>
 
           {/* Center: Collapsible Category Selector & Role Switcher */}
