@@ -38,6 +38,43 @@ if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
   }
 }
 
+export function normalizeQuizResponse(item: any): QuizResponse {
+  const rawKeywords: string[] = Array.isArray(item.keywords) ? item.keywords : [];
+  let detectedSeason = item.season;
+
+  // 1. Look for embedded __SEASON:xxx__ meta tag in keywords
+  const metaTag = rawKeywords.find(
+    (k) => typeof k === 'string' && k.startsWith('__SEASON:') && k.endsWith('__')
+  );
+
+  if (metaTag) {
+    detectedSeason = metaTag.replace('__SEASON:', '').replace('__', '');
+  }
+
+  // 2. Filter out internal metadata tags from display keywords
+  const cleanKeywords = rawKeywords.filter(
+    (k) => typeof k === 'string' && !k.startsWith('__SEASON:') && !k.startsWith('__META:')
+  );
+
+  // 3. Fallback heuristic: If marked as 'summer' (or empty) but strongly resembles winter tags
+  if (!detectedSeason || detectedSeason === 'summer') {
+    const winterClues = ['눈사람', '스키', '썰매', '붕어빵', '군고구마', '호빵', '전기장판', '겨울', '눈싸움', '스케이트', '삿포로', '크리스마스', '온천'];
+    const matchesWinter = cleanKeywords.some(kw => winterClues.some(clue => kw.includes(clue)));
+    if (matchesWinter) {
+      detectedSeason = 'winter';
+    }
+  }
+
+  return {
+    id: item.id || `item-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+    created_at: item.created_at || new Date().toISOString(),
+    student_name: item.student_name || '참여자',
+    keywords: cleanKeywords,
+    is_shown: !!item.is_shown,
+    season: detectedSeason || 'summer',
+  };
+}
+
 export function getLocalResponses(): QuizResponse[] {
   if (typeof window === 'undefined') return [];
   try {
@@ -45,10 +82,7 @@ export function getLocalResponses(): QuizResponse[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (Array.isArray(parsed)) {
-      return parsed.map(item => ({
-        ...item,
-        season: item.season || 'summer',
-      }));
+      return parsed.map(normalizeQuizResponse);
     }
     return [];
   } catch {
@@ -80,10 +114,7 @@ export async function fetchQuizResponses(season?: VacationSeason): Promise<QuizR
         console.warn('Supabase fetch error, falling back to local:', error.message);
         allResponses = getLocalResponses();
       } else if (data && Array.isArray(data)) {
-        allResponses = data.map(item => ({
-          ...item,
-          season: item.season || 'summer',
-        }));
+        allResponses = data.map(normalizeQuizResponse);
       }
     } catch (err) {
       console.warn('Supabase fetch exception, falling back to local:', err);
@@ -124,6 +155,10 @@ export async function submitQuizResponse(
     season,
   };
 
+  // Embed the season meta tag into keywords so it persists across devices even if Supabase lacks a 'season' column!
+  const metaSeasonTag = `__SEASON:${season}__`;
+  const dbKeywords = [...cleanKeywords, metaSeasonTag];
+
   if (supabase) {
     try {
       const { data, error } = await supabase
@@ -131,7 +166,7 @@ export async function submitQuizResponse(
         .insert({
           id: newRecord.id,
           student_name: cleanName,
-          keywords: cleanKeywords,
+          keywords: dbKeywords,
           is_shown: false,
           season,
         })
@@ -139,24 +174,24 @@ export async function submitQuizResponse(
         .single();
 
       if (error) {
-        // If Supabase table doesn't have the season column yet, fallback gracefully
+        // If Supabase table doesn't have the season column yet, fallback gracefully with dbKeywords
         if (error.message && (error.message.includes('season') || error.code === '42703')) {
-          console.warn('Supabase table missing season column, inserting without it:', error.message);
+          console.warn('Supabase table missing season column, inserting with embedded season tag:', error.message);
           const { data: fallbackData } = await supabase
             .from('quiz_responses')
             .insert({
               id: newRecord.id,
               student_name: cleanName,
-              keywords: cleanKeywords,
+              keywords: dbKeywords,
               is_shown: false,
             })
             .select()
             .single();
 
-          const savedRecord: QuizResponse = { ...(fallbackData || newRecord), season };
+          const normalized = normalizeQuizResponse(fallbackData || { ...newRecord, keywords: dbKeywords });
           const current = getLocalResponses();
-          setLocalResponses([...current, savedRecord]);
-          return { success: true, data: savedRecord };
+          setLocalResponses([...current, normalized]);
+          return { success: true, data: normalized };
         }
 
         console.warn('Supabase insert error, saving locally:', error.message);
@@ -164,7 +199,11 @@ export async function submitQuizResponse(
         setLocalResponses([...current, newRecord]);
         return { success: true, data: newRecord };
       }
-      return { success: true, data: { ...data, season: data?.season || season } };
+
+      const normalized = normalizeQuizResponse(data || newRecord);
+      const current = getLocalResponses();
+      setLocalResponses([...current, normalized]);
+      return { success: true, data: normalized };
     } catch (err) {
       console.warn('Supabase insert exception, saving locally:', err);
       const current = getLocalResponses();
@@ -177,6 +216,62 @@ export async function submitQuizResponse(
   const updated = [...current, newRecord];
   setLocalResponses(updated);
   return { success: true, data: newRecord };
+}
+
+export async function updateResponseSeason(id: string, newSeason: VacationSeason): Promise<boolean> {
+  const current = getLocalResponses();
+  const target = current.find(r => r.id === id);
+  if (!target) return false;
+
+  const updatedRecord: QuizResponse = { ...target, season: newSeason };
+  const updatedList = current.map(item => item.id === id ? updatedRecord : item);
+  setLocalResponses(updatedList);
+
+  if (supabase) {
+    try {
+      const cleanKeywords = target.keywords.filter(
+        k => typeof k === 'string' && !k.startsWith('__SEASON:') && !k.startsWith('__META:')
+      );
+      const dbKeywords = [...cleanKeywords, `__SEASON:${newSeason}__`];
+
+      // Try update with both season column and meta tag
+      const { error } = await supabase
+        .from('quiz_responses')
+        .update({
+          season: newSeason,
+          keywords: dbKeywords,
+        })
+        .eq('id', id);
+
+      if (error) {
+        // Fallback: update keywords array only if season column does not exist
+        await supabase
+          .from('quiz_responses')
+          .update({
+            keywords: dbKeywords,
+          })
+          .eq('id', id);
+      }
+    } catch (err) {
+      console.warn('Supabase updateResponseSeason exception:', err);
+    }
+  }
+
+  return true;
+}
+
+export async function moveAllResponsesToSeason(
+  fromSeason: VacationSeason,
+  toSeason: VacationSeason
+): Promise<number> {
+  const current = getLocalResponses();
+  const toMove = current.filter(r => (r.season || 'summer') === fromSeason);
+  if (toMove.length === 0) return 0;
+
+  for (const item of toMove) {
+    await updateResponseSeason(item.id, toSeason);
+  }
+  return toMove.length;
 }
 
 export async function markResponseAsShown(id: string, isShown = true): Promise<boolean> {

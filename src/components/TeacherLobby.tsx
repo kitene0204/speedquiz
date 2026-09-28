@@ -21,14 +21,25 @@ import {
   Sliders,
   Plus,
   Minus,
-  Settings
+  Settings,
+  ArrowRightLeft,
+  ArrowRight
 } from 'lucide-react';
 import { QuizResponse, VacationSeason, ChaptersSettings, DEFAULT_CHAPTERS } from '../types';
-import { deleteAllResponses, resetShownStatusAll, seedSampleResponses } from '../lib/supabase';
+import { 
+  deleteAllResponses, 
+  resetShownStatusAll, 
+  seedSampleResponses,
+  updateResponseSeason,
+  moveAllResponsesToSeason 
+} from '../lib/supabase';
 import { playPopSound } from '../lib/sound';
+import { getChapterTheme } from '../lib/theme';
 
 interface TeacherLobbyProps {
   responses: QuizResponse[];
+  allResponses?: QuizResponse[];
+  onRefresh?: () => void;
   onStartQuiz: () => void;
   onOpenSupabaseGuide: () => void;
   onSwitchToStudent: () => void;
@@ -45,6 +56,8 @@ interface TeacherLobbyProps {
 
 export function TeacherLobby({
   responses,
+  allResponses,
+  onRefresh,
   onStartQuiz,
   onOpenSupabaseGuide,
   onSwitchToStudent,
@@ -62,19 +75,32 @@ export function TeacherLobby({
   const [hideNames, setHideNames] = useState(true);
   const [isSeeding, setIsSeeding] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isMoving, setIsMoving] = useState(false);
+  const [selectedResponseForMove, setSelectedResponseForMove] = useState<QuizResponse | null>(null);
 
   const isWinter = season === 'winter';
   const isTraining = season === 'training';
-  const currentChapter = (chapters && chapters[season]) || DEFAULT_CHAPTERS[season];
+  const currentChapter = (chapters && chapters[season]) || DEFAULT_CHAPTERS[season] || {
+    name: season,
+    emoji: '✨',
+    title: '퀴즈를 맞춰봐!',
+    badge: '활동',
+    description: '',
+  };
+  const currentTheme = getChapterTheme(currentChapter, season);
+  const chapterKeys = Object.keys(chapters || DEFAULT_CHAPTERS);
 
   // Student participation URL with season parameter and keyword count preserved
   const studentUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}${window.location.pathname}?role=student&season=${season}&count=${keywordCount}`
+    ? `${window.location.origin}${window.location.pathname}?role=student&season=${encodeURIComponent(season)}&count=${keywordCount}`
     : '';
 
   const totalCount = responses.length;
   const unshownCount = responses.filter(r => !r.is_shown).length;
   const shownCount = totalCount - unshownCount;
+
+  // Track counts across all seasons to assist the teacher if responses went to summer
+  const summerCountInAll = (allResponses || []).filter(r => (r.season || 'summer') === 'summer').length;
 
   const handleCopyUrl = async () => {
     try {
@@ -92,6 +118,7 @@ export function TeacherLobby({
     try {
       await seedSampleResponses(season);
       playPopSound();
+      if (onRefresh) onRefresh();
     } finally {
       setIsSeeding(false);
     }
@@ -100,44 +127,87 @@ export function TeacherLobby({
   const handleResetShown = async () => {
     await resetShownStatusAll(season);
     playPopSound();
+    if (onRefresh) onRefresh();
   };
 
   const handleDeleteAll = async () => {
     await deleteAllResponses(season);
     setShowDeleteConfirm(false);
     playPopSound();
+    if (onRefresh) onRefresh();
+  };
+
+  const handleMoveAllToSeason = async (fromSeason: VacationSeason, toSeason: VacationSeason) => {
+    setIsMoving(true);
+    try {
+      await moveAllResponsesToSeason(fromSeason, toSeason);
+      playPopSound();
+      if (onRefresh) onRefresh();
+    } finally {
+      setIsMoving(false);
+    }
+  };
+
+  const handleSingleMove = async (itemId: string, targetSeason: VacationSeason) => {
+    await updateResponseSeason(itemId, targetSeason);
+    playPopSound();
+    if (onRefresh) onRefresh();
+    setSelectedResponseForMove(null);
   };
 
   const toggleSeasonMode = () => {
     playPopSound();
-    const nextSeason: VacationSeason = season === 'summer' ? 'winter' : season === 'winter' ? 'training' : 'summer';
-    onToggleSeason(nextSeason);
+    const currentIndex = chapterKeys.indexOf(season);
+    const nextIndex = (currentIndex + 1) % chapterKeys.length;
+    onToggleSeason(chapterKeys[nextIndex] || 'summer');
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-2 sm:px-4 space-y-8 select-none animate-fadeIn">
+    <div className="max-w-7xl mx-auto px-2 sm:px-4 space-y-6 select-none animate-fadeIn">
+      {/* Alert Banner: Prompt to import responses from summer if they arrived there */}
+      {season === 'winter' && summerCountInAll > 0 && (
+        <div className="bg-amber-50 border-4 border-amber-300 rounded-3xl p-5 sm:p-6 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-md animate-bounce-subtle">
+          <div className="flex items-center gap-3.5 text-left">
+            <div className="w-12 h-12 rounded-2xl bg-amber-400 text-amber-950 flex items-center justify-center shrink-0 text-2xl font-black shadow-xs">
+              💡
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-black text-amber-950 text-base sm:text-lg">
+                  여름방학 쪽에 학생 응답이 <span className="text-rose-600 underline font-extrabold">{summerCountInAll}명</span> 대기 중입니다!
+                </h3>
+                <span className="hidden md:inline-block px-2 py-0.5 rounded-full text-xs font-black bg-amber-200 text-amber-900">
+                  원클릭 이동 지원
+                </span>
+              </div>
+              <p className="text-xs sm:text-sm text-amber-900/80 font-bold mt-0.5">
+                학생들이 겨울방학 퀴즈를 위해 제출한 응답이라면 아래 버튼을 눌러 겨울방학 대기실로 즉시 옮길 수 있습니다.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            id="import-summer-responses-button"
+            onClick={() => handleMoveAllToSeason('summer', 'winter')}
+            disabled={isMoving}
+            className="shrink-0 w-full sm:w-auto px-6 py-3 rounded-2xl bg-sky-500 hover:bg-sky-600 text-white font-black text-sm flex items-center justify-center gap-2 shadow-[0_4px_0_0_#0284C7] active:translate-y-1 active:shadow-none cursor-pointer transition-all"
+          >
+            <ArrowRightLeft className="w-4 h-4 stroke-[3]" />
+            <span>{isMoving ? '이동 처리 중...' : '여름방학 응답을 겨울방학으로 가져오기 ➔'}</span>
+          </button>
+        </div>
+      )}
+
       {/* Top Banner / Classroom Title */}
       <div 
-        className={`bg-white rounded-[40px] sm:rounded-[48px] shadow-[0_16px_0_0_#0EA5E9] border-6 sm:border-8 overflow-hidden transition-colors ${
-          isTraining ? 'border-[#8ED1A8]' : isWinter ? 'border-[#BAE6FD]' : 'border-[#FEF08A]'
-        }`}
+        className={`bg-white rounded-[40px] sm:rounded-[48px] shadow-[0_16px_0_0_#0EA5E9] border-6 sm:border-8 overflow-hidden transition-colors ${currentTheme.cardBorder}`}
       >
         <div 
-          className={`p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left transition-colors border-b-4 ${
-            isTraining 
-              ? 'bg-[#F2FBF5] border-[#B2DFCA]' 
-              : isWinter 
-              ? 'bg-[#E0F2FE] border-[#BAE6FD]' 
-              : 'bg-[#FEF9C3] border-[#FEF08A]'
-          }`}
+          className={`p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left transition-colors border-b-4 ${currentTheme.headerBg} ${currentTheme.headerBorder}`}
         >
           <div className="space-y-2">
             <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
-              <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-white font-black text-xs ${
-                isTraining 
-                  ? 'bg-[#2A8255] shadow-[0_2px_0_0_#1B5D3A]' 
-                  : 'bg-[#0EA5E9] shadow-[0_2px_0_0_#0284C7]'
-              }`}>
+              <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-white font-black text-xs ${currentTheme.buttonActive}`}>
                 {isTraining ? <GraduationCap className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
                 <span>
                   {isTraining ? '연수 진행자 모드' : '선생님 진행자 모드'} ({currentChapter.name} 대기실 {currentChapter.emoji})
@@ -146,14 +216,8 @@ export function TeacherLobby({
               <button
                 type="button"
                 onClick={toggleSeasonMode}
-                className={`px-3 py-1 rounded-full text-xs font-black border transition-all cursor-pointer ${
-                  isTraining
-                    ? 'bg-[#EBF6F0] text-[#1E6D44] border-[#8ED1A8] hover:bg-[#DDF0E4]'
-                    : isWinter 
-                    ? 'bg-white text-sky-700 border-sky-300 hover:bg-sky-50' 
-                    : 'bg-amber-100 text-amber-900 border-amber-300 hover:bg-amber-200'
-                }`}
-                title="클릭하여 모드 변경 (여름 ➔ 겨울 ➔ 교사 연수)"
+                className={`px-3 py-1 rounded-full text-xs font-black border transition-all cursor-pointer ${currentTheme.pillBg} ${currentTheme.pillText} ${currentTheme.pillBorder} hover:opacity-80`}
+                title="클릭하여 다른 카테고리로 전환"
               >
                 <span>{currentChapter.emoji} {currentChapter.name} 모드 (클릭 전환)</span>
               </button>
@@ -504,15 +568,29 @@ export function TeacherLobby({
                 </span>
               </button>
 
-              <button
-                id="delete-all-button"
-                onClick={() => setShowDeleteConfirm(true)}
-                disabled={totalCount === 0}
-                className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-black transition-all border-2 border-rose-200 shadow-[0_3px_0_0_#FECDD3] active:translate-y-1 active:shadow-none disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-              >
-                <Trash2 className="w-4 h-4 text-rose-600" />
-                <span>전체 응답 삭제</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  id="lobby-move-responses-button"
+                  onClick={() => setSelectedResponseForMove(responses[0] || null)}
+                  disabled={totalCount === 0}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-sky-50 hover:bg-sky-100 text-[#0369A1] text-xs font-black transition-all border-2 border-[#BAE6FD] shadow-[0_3px_0_0_#BAE6FD] active:translate-y-1 active:shadow-none disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                  title="현재 응답들을 다른 카테고리(겨울방학, 연수, 주말 등)로 이동"
+                >
+                  <ArrowRightLeft className="w-4 h-4 text-[#0EA5E9]" />
+                  <span>카테고리 이동</span>
+                </button>
+
+                <button
+                  id="delete-all-button"
+                  onClick={() => setShowDeleteConfirm(true)}
+                  disabled={totalCount === 0}
+                  className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-black transition-all border-2 border-rose-200 shadow-[0_3px_0_0_#FECDD3] active:translate-y-1 active:shadow-none disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  <Trash2 className="w-4 h-4 text-rose-600" />
+                  <span>전체 응답 삭제</span>
+                </button>
+              </div>
             </div>
           </div>
 
@@ -564,7 +642,7 @@ export function TeacherLobby({
                   return (
                     <div
                       key={item.id}
-                      className={`px-3.5 py-1.5 rounded-xl border-2 text-xs font-black flex items-center gap-2 transition-all ${
+                      className={`group px-3 py-1.5 rounded-xl border-2 text-xs font-black flex items-center gap-1.5 transition-all ${
                         item.is_shown
                           ? 'bg-slate-100 text-slate-400 border-slate-200 line-through'
                           : 'bg-[#F0F9FF] text-[#0369A1] border-[#BAE6FD] shadow-[0_2px_0_0_#BAE6FD]'
@@ -574,6 +652,14 @@ export function TeacherLobby({
                       <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-white text-[#0EA5E9] font-mono border border-[#BAE6FD]">
                         {item.keywords.length}개
                       </span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedResponseForMove(item)}
+                        className="opacity-60 group-hover:opacity-100 hover:text-sky-700 p-0.5 rounded-sm hover:bg-sky-100 transition-all cursor-pointer"
+                        title={`${item.student_name}의 응답 카테고리 변경`}
+                      >
+                        <ArrowRightLeft className="w-3 h-3" />
+                      </button>
                     </div>
                   );
                 })}
@@ -582,6 +668,88 @@ export function TeacherLobby({
           </div>
         </div>
       </div>
+
+      {/* Category Migration Modal */}
+      {selectedResponseForMove && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
+          <div 
+            id="move-category-dialog"
+            className="bg-white rounded-[36px] p-6 sm:p-8 max-w-md w-full shadow-[0_20px_0_0_#0EA5E9] space-y-5 border-6 border-[#BAE6FD]"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-sky-100 text-sky-600 flex items-center justify-center border-2 border-sky-300">
+                <ArrowRightLeft className="w-6 h-6 stroke-[3]" />
+              </div>
+              <div>
+                <h3 className="text-xl font-black text-slate-900">응답 카테고리 이동</h3>
+                <p className="text-xs font-bold text-slate-500">
+                  선택한 응답을 다른 카테고리로 안전하게 이동합니다
+                </p>
+              </div>
+            </div>
+
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-1 text-xs">
+              <div className="text-slate-500 font-bold">현재 선택된 참여자:</div>
+              <div className="font-black text-sm text-[#0369A1]">
+                {selectedResponseForMove.student_name} ({selectedResponseForMove.keywords.join(', ')})
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-black text-slate-700">
+                어느 카테고리로 이동하시겠습니까?
+              </label>
+              <div className="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto pr-1">
+                {chapterKeys.filter(k => k !== season).map(targetKey => {
+                  const targetConfig = (chapters && chapters[targetKey]) || DEFAULT_CHAPTERS[targetKey];
+                  if (!targetConfig) return null;
+                  return (
+                    <div key={targetKey} className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleSingleMove(selectedResponseForMove.id, targetKey)}
+                        disabled={isMoving}
+                        className="flex-1 p-2.5 rounded-xl border-2 border-slate-200 hover:border-sky-400 bg-white hover:bg-sky-50 text-left font-black text-xs text-slate-800 flex items-center justify-between transition-colors cursor-pointer"
+                      >
+                        <span className="flex items-center gap-2">
+                          <span className="text-lg">{targetConfig.emoji}</span>
+                          <span>{targetConfig.name}으로 이 1명만 이동</span>
+                        </span>
+                        <ArrowRight className="w-3.5 h-3.5 text-slate-400" />
+                      </button>
+
+                      {totalCount > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleMoveAllToSeason(season, targetKey);
+                            setSelectedResponseForMove(null);
+                          }}
+                          disabled={isMoving}
+                          className="px-3 py-2 rounded-xl border-2 border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-950 font-black text-[11px] whitespace-nowrap transition-colors cursor-pointer"
+                          title="현재 카테고리의 모든 응답을 함께 이동"
+                        >
+                          전체 {totalCount}명 이동
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                type="button"
+                onClick={() => setSelectedResponseForMove(null)}
+                className="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-black text-xs transition-colors cursor-pointer"
+              >
+                닫기
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (

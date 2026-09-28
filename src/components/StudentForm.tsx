@@ -1,8 +1,9 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useMemo, type FormEvent } from 'react';
 import { Sparkles, CheckCircle2, Send, Edit3, Tag, Snowflake, Sun, GraduationCap, Plus, Minus, Trash2, Sliders } from 'lucide-react';
 import { submitQuizResponse } from '../lib/supabase';
 import { playPopSound } from '../lib/sound';
 import { VacationSeason, ChapterConfig, DEFAULT_CHAPTERS } from '../types';
+import { getChapterTheme } from '../lib/theme';
 
 const SUMMER_TAGS = [
   '🏖️ 워터파크',
@@ -17,6 +18,21 @@ const SUMMER_TAGS = [
   '🐶 시골 할머니댁',
   '📚 만화 카페',
   '🍕 야식 피자',
+];
+
+const WEEKEND_TAGS = [
+  '🎈 늦잠 푹 자기',
+  '🍕 맛있는 배달음식',
+  '🎬 영화·유튜브 정주행',
+  '☕ 예쁜 카페 나들이',
+  '🎮 친구들과 게임',
+  '🚴 한강·공원 자전거',
+  '⛺ 주말 캠핑',
+  '🛍️ 쇼핑·백화점',
+  '🐶 반려견 산책',
+  '📚 만화 카페 독서',
+  '⚽ 축구·배드민턴',
+  '🥐 베이커리 빵지순례',
 ];
 
 const WINTER_TAGS = [
@@ -70,10 +86,33 @@ export function StudentForm({
   onKeywordCountChange,
   chapter,
 }: StudentFormProps) {
-  const isWinter = season === 'winter';
-  const isTraining = season === 'training';
-  const currentChapter = chapter || DEFAULT_CHAPTERS[season];
-  const popularTags = isTraining ? TEACHER_TRAINING_TAGS : isWinter ? WINTER_TAGS : SUMMER_TAGS;
+  // Always inspect URL query string first: ?season=... or ?mode=... takes top precedence on student devices!
+  const effectiveSeason = useMemo<VacationSeason>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const urlSeason = params.get('season') || params.get('mode');
+      if (urlSeason) return urlSeason;
+    }
+    return season || 'summer';
+  }, [season]);
+
+  const isWinter = effectiveSeason === 'winter';
+  const isTraining = effectiveSeason === 'training';
+  const currentChapter = chapter || DEFAULT_CHAPTERS[effectiveSeason] || {
+    name: effectiveSeason,
+    emoji: '✨',
+    title: '퀴즈를 맞춰봐!',
+    badge: '활동',
+    description: '',
+  };
+  const currentTheme = getChapterTheme(currentChapter, effectiveSeason);
+  const popularTags = isTraining 
+    ? TEACHER_TRAINING_TAGS 
+    : isWinter 
+    ? WINTER_TAGS 
+    : (effectiveSeason.includes('weekend') || effectiveSeason.includes('holiday') || currentChapter.name.includes('주말') || currentChapter.name.includes('연휴'))
+    ? WEEKEND_TAGS
+    : SUMMER_TAGS;
 
   // Determine starting question/keyword count from URL query (?count= or ?keywords=), prop, or fallback 3
   const [keywords, setKeywords] = useState<string[]>(() => {
@@ -209,14 +248,14 @@ export function StudentForm({
       setErrorMsg(
         isTraining
           ? '최근 경험 키워드를 최소 1개 이상 입력해주세요!'
-          : `${isWinter ? '겨울방학' : '방학'} 키워드를 최소 1개 이상 입력해주세요!`
+          : `${currentChapter.name} 키워드를 최소 1개 이상 입력해주세요!`
       );
       return;
     }
 
     setIsSubmitting(true);
     try {
-      const res = await submitQuizResponse(name, rawKeywords, season);
+      const res = await submitQuizResponse(name, rawKeywords, effectiveSeason);
       if (res.success) {
         playPopSound();
         setSubmittedData({
@@ -251,19 +290,11 @@ export function StudentForm({
     <div className="max-w-2xl mx-auto w-full px-2 sm:px-4 animate-fadeIn select-none">
       {/* Student/Teacher Participant Form Box */}
       <div 
-        className={`bg-white rounded-[40px] sm:rounded-[48px] shadow-[0_20px_0_0_#0EA5E9] border-6 sm:border-8 overflow-hidden transition-all ${
-          isTraining ? 'border-[#8ED1A8]' : isWinter ? 'border-[#BAE6FD]' : 'border-[#FEF08A]'
-        }`}
+        className={`bg-white rounded-[40px] sm:rounded-[48px] shadow-[0_20px_0_0_#0EA5E9] border-6 sm:border-8 overflow-hidden transition-all ${currentTheme.cardBorder}`}
       >
         {/* Header Ribbon */}
         <div 
-          className={`p-6 sm:p-8 text-center relative border-b-4 ${
-            isTraining 
-              ? 'bg-[#F2FBF5] border-[#B2DFCA]' 
-              : isWinter 
-              ? 'bg-[#E0F2FE] border-[#BAE6FD]' 
-              : 'bg-[#FEF9C3] border-[#FEF08A]'
-          }`}
+          className={`p-6 sm:p-8 text-center relative border-b-4 ${currentTheme.headerBg} ${currentTheme.headerBorder}`}
         >
           {/* Season Indicator & Quick Toggle */}
           {onToggleSeason && (
@@ -271,26 +302,18 @@ export function StudentForm({
               <button
                 type="button"
                 onClick={toggleNextSeason}
-                className={`px-3 py-1 rounded-xl text-xs font-black border transition-all flex items-center gap-1 shadow-xs cursor-pointer ${
-                  isTraining
-                    ? 'bg-white text-[#1E6D44] border-[#8ED1A8] hover:bg-[#EBF6F0]'
-                    : isWinter 
-                    ? 'bg-white text-sky-800 border-sky-300 hover:bg-sky-50' 
-                    : 'bg-white text-amber-900 border-amber-300 hover:bg-amber-50'
-                }`}
-                title="모드 전환 (여름 ➔ 겨울 ➔ 교사 연수)"
+                className={`px-3 py-1 rounded-xl text-xs font-black border transition-all flex items-center gap-1 shadow-xs cursor-pointer ${currentTheme.pillBg} ${currentTheme.pillText} ${currentTheme.pillBorder} hover:opacity-80`}
+                title="다른 활동 카테고리로 전환"
               >
                 <span>{currentChapter.emoji} {currentChapter.name} 모드</span>
               </button>
             </div>
           )}
 
-          <div className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-white font-black text-xs mb-3 ${
-            isTraining ? 'bg-[#2A8255] shadow-[0_2px_0_0_#1B5D3A]' : 'bg-[#0EA5E9] shadow-[0_2px_0_0_#0284C7]'
-          }`}>
+          <div className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-white font-black text-xs mb-3 ${currentTheme.buttonActive}`}>
             {isTraining ? <GraduationCap className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5" />}
             <span>
-              {isTraining ? '선생님 참여 화면' : '학생 참여 화면'} ({currentChapter.name} {currentChapter.emoji})
+              {isTraining ? '선생님 참여 화면' : '참여자 작성 화면'} ({currentChapter.name} {currentChapter.emoji})
             </span>
           </div>
           <h1 className="text-3xl sm:text-4xl font-black text-[#0369A1] tracking-tight">
@@ -537,19 +560,13 @@ export function StudentForm({
                 id="submit-keywords-button"
                 type="submit"
                 disabled={isSubmitting}
-                className={`w-full py-4 px-6 rounded-2xl text-white font-black text-lg sm:text-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 ${
-                  isTraining
-                    ? 'bg-[#2A8255] hover:bg-[#236F48] shadow-[0_8px_0_0_#1B5D3A] hover:translate-y-1 hover:shadow-[0_4px_0_0_#1B5D3A]'
-                    : 'bg-[#0EA5E9] hover:bg-[#0284C7] shadow-[0_8px_0_0_#0284C7] hover:translate-y-1 hover:shadow-[0_4px_0_0_#0284C7]'
-                }`}
+                className={`w-full py-4 px-6 rounded-2xl text-white font-black text-lg sm:text-xl transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 ${currentTheme.buttonActive}`}
               >
                 <Send className="w-5 h-5" />
                 <span>
                   {isSubmitting 
                     ? (isTraining ? '연수 진행 화면으로 전송 중...' : '선생님 화면으로 전송 중...') 
-                    : isTraining 
-                    ? '선생님 경험 키워드 제출하기! 🎾' 
-                    : `${isWinter ? '겨울방학' : '방학'} 키워드 제출하기!`}
+                    : `${currentChapter.name} 키워드 제출하기! ${currentChapter.emoji}`}
                 </span>
               </button>
             </form>

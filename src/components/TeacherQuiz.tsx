@@ -14,6 +14,7 @@ import {
 import { QuizResponse, VacationSeason, ChapterConfig, DEFAULT_CHAPTERS } from '../types';
 import { markResponseAsShown, resetShownStatusAll } from '../lib/supabase';
 import { playFanfareSound, playPopSound } from '../lib/sound';
+import { getChapterTheme } from '../lib/theme';
 
 interface TeacherQuizProps {
   responses: QuizResponse[];
@@ -38,7 +39,14 @@ export function TeacherQuiz({
 
   const isWinter = season === 'winter';
   const isTraining = season === 'training';
-  const currentChapter = chapter || DEFAULT_CHAPTERS[season];
+  const currentChapter = chapter || DEFAULT_CHAPTERS[season] || {
+    name: season,
+    emoji: '✨',
+    title: '퀴즈를 맞춰봐!',
+    badge: '활동',
+    description: '',
+  };
+  const currentTheme = getChapterTheme(currentChapter, season);
 
   // Compute stats
   const totalCount = responses.length;
@@ -178,16 +186,10 @@ export function TeacherQuiz({
     return (
       <div className="max-w-5xl mx-auto w-full px-4 py-8 animate-fadeIn">
         <div 
-          className={`bg-white rounded-[40px] sm:rounded-[48px] shadow-[0_20px_0_0_#0EA5E9] flex flex-col overflow-hidden border-6 sm:border-8 p-6 sm:p-12 text-center space-y-8 ${
-            isTraining ? 'border-[#8ED1A8]' : isWinter ? 'border-[#BAE6FD]' : 'border-[#FEF08A]'
-          }`}
+          className={`bg-white rounded-[40px] sm:rounded-[48px] shadow-[0_20px_0_0_#0EA5E9] flex flex-col overflow-hidden border-6 sm:border-8 p-6 sm:p-12 text-center space-y-8 ${currentTheme.cardBorder}`}
         >
-          <div className={`w-24 h-24 mx-auto rounded-3xl flex items-center justify-center rotate-3 border-4 text-4xl ${
-            isTraining 
-              ? 'bg-[#EBF6F0] text-[#1E6D44] shadow-[0_8px_0_0_#8ED1A8] border-[#B2DFCA]' 
-              : 'bg-[#FEF08A] text-[#0369A1] shadow-[0_8px_0_0_#FACC15] border-[#FDE047]'
-          }`}>
-            {isTraining ? '🎓' : isWinter ? '⛄' : '🏆'}
+          <div className={`w-24 h-24 mx-auto rounded-3xl flex items-center justify-center rotate-3 border-4 text-4xl ${currentTheme.pillBg} ${currentTheme.pillText} shadow-[0_8px_0_0_#CBD5E1] ${currentTheme.pillBorder}`}>
+            {currentChapter.emoji}
           </div>
 
           <div className="space-y-3">
@@ -278,24 +280,14 @@ export function TeacherQuiz({
       {/* The Iconic Theme Frame */}
       <div 
         id="quiz-main-stage"
-        className={`bg-white rounded-[40px] sm:rounded-[48px] shadow-[0_20px_0_0_#0EA5E9] flex flex-col overflow-hidden border-6 sm:border-8 ${
-          isTraining ? 'border-[#8ED1A8]' : isWinter ? 'border-[#BAE6FD]' : 'border-[#FEF08A]'
-        }`}
+        className={`bg-white rounded-[40px] sm:rounded-[48px] shadow-[0_20px_0_0_#0EA5E9] flex flex-col overflow-hidden border-6 sm:border-8 ${currentTheme.cardBorder}`}
       >
         {/* Header Bar */}
         <header 
-          className={`min-h-20 sm:h-24 flex flex-wrap items-center justify-between px-6 sm:px-12 py-3 border-b-4 gap-4 ${
-            isTraining 
-              ? 'bg-[#F2FBF5] border-[#B2DFCA]' 
-              : isWinter 
-              ? 'bg-[#E0F2FE] border-[#BAE6FD]' 
-              : 'bg-[#FEF9C3] border-[#FEF08A]'
-          }`}
+          className={`min-h-20 sm:h-24 flex flex-wrap items-center justify-between px-6 sm:px-12 py-3 border-b-4 gap-4 ${currentTheme.headerBg} ${currentTheme.headerBorder}`}
         >
           <div className="flex items-center gap-4">
-            <div className={`text-white px-5 sm:px-6 py-1.5 sm:py-2 rounded-full font-bold text-base sm:text-xl ${
-              isTraining ? 'bg-[#2A8255] shadow-[0_3px_0_0_#1B5D3A]' : 'bg-[#0EA5E9] shadow-[0_3px_0_0_#0284C7]'
-            }`}>
+            <div className={`text-white px-5 sm:px-6 py-1.5 sm:py-2 rounded-full font-bold text-base sm:text-xl ${currentTheme.buttonActive}`}>
               제 {currentNumber} / {totalCount} 번
             </div>
             <h1 className="text-xl sm:text-3xl font-black text-[#0369A1] tracking-tight">
@@ -428,11 +420,7 @@ export function TeacherQuiz({
               <button
                 id="reveal-answer-button"
                 onClick={handleRevealAnswer}
-                className={`text-white px-8 sm:px-12 py-3.5 sm:py-4 rounded-2xl font-black text-xl sm:text-2xl hover:translate-y-1 active:translate-y-2 active:shadow-none transition-all cursor-pointer ${
-                  isTraining
-                    ? 'bg-[#2A8255] hover:bg-[#236F48] shadow-[0_8px_0_0_#1B5D3A] hover:shadow-[0_4px_0_0_#1B5D3A]'
-                    : 'bg-[#0EA5E9] text-white shadow-[0_8px_0_0_#0284C7] hover:shadow-[0_4px_0_0_#0284C7]'
-                }`}
+                className={`text-white px-8 sm:px-12 py-3.5 sm:py-4 rounded-2xl font-black text-xl sm:text-2xl hover:translate-y-1 active:translate-y-2 active:shadow-none transition-all cursor-pointer ${currentTheme.buttonActive}`}
               >
                 정답 확인
               </button>

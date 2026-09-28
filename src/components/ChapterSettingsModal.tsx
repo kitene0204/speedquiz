@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { X, Settings, RotateCcw, Check, Sparkles, Sun, Snowflake, GraduationCap } from 'lucide-react';
-import { ChaptersSettings, DEFAULT_CHAPTERS, QuizMode } from '../types';
+import { X, Settings, RotateCcw, Check, Sparkles, Plus, Trash2 } from 'lucide-react';
+import { ChaptersSettings, DEFAULT_CHAPTERS, QuizMode, CategoryThemeColor } from '../types';
 import { playPopSound } from '../lib/sound';
+import { getChapterTheme } from '../lib/theme';
 
 interface ChapterSettingsModalProps {
   isOpen: boolean;
@@ -9,38 +10,60 @@ interface ChapterSettingsModalProps {
   chapters: ChaptersSettings;
   onSave: (updated: ChaptersSettings) => void;
   activeMode?: QuizMode;
+  onOpenCreateCategory?: () => void;
 }
 
-const EMOJI_SUGGESTIONS = ['🏖️', '⛄', '🎾', '🎓', '🏫', '🌸', '🍁', '☀️', '🎉', '🚀', '💡', '📚', '☕', '🏕️', '🍕', '🏊'];
+const EMOJI_SUGGESTIONS = ['🏖️', '⛄', '🎾', '🎓', '🎈', '🎏', '🚌', '🎒', '🏫', '🌸', '🍁', '☀️', '🎉', '🚀', '💡', '📚', '☕', '🏕️', '🍕', '🎮'];
+
+const THEME_OPTIONS: Array<{ key: CategoryThemeColor; label: string; bg: string }> = [
+  { key: 'orange', label: '오렌지 (주말)', bg: 'bg-orange-500' },
+  { key: 'rose', label: '로즈 (연휴)', bg: 'bg-rose-500' },
+  { key: 'indigo', label: '인디고 (체험학습)', bg: 'bg-indigo-600' },
+  { key: 'purple', label: '퍼플 (자기소개)', bg: 'bg-purple-600' },
+  { key: 'sky', label: '스카이블루', bg: 'bg-sky-500' },
+  { key: 'emerald', label: '윔블던그린', bg: 'bg-[#2A8255]' },
+  { key: 'amber', label: '골드옐로우', bg: 'bg-amber-400' },
+  { key: 'teal', label: '민트티얼', bg: 'bg-teal-600' },
+];
 
 export function ChapterSettingsModal({
   isOpen,
   onClose,
   chapters,
   onSave,
-  activeMode = 'summer'
+  activeMode = 'summer',
+  onOpenCreateCategory,
 }: ChapterSettingsModalProps) {
-  const [activeTab, setActiveTab] = useState<QuizMode>(activeMode);
+  const [activeTab, setActiveTab] = useState<string>(activeMode);
   const [formData, setFormData] = useState<ChaptersSettings>(chapters);
   const [isSavedFeedback, setIsSavedFeedback] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       setFormData(chapters);
-      setActiveTab(activeMode);
+      const keys = Object.keys(chapters);
+      if (keys.includes(activeMode)) {
+        setActiveTab(activeMode);
+      } else if (keys.length > 0) {
+        setActiveTab(keys[0]);
+      }
       setIsSavedFeedback(false);
     }
   }, [isOpen, chapters, activeMode]);
 
   if (!isOpen) return null;
 
-  const currentConfig = formData[activeTab];
+  const tabKeys = Object.keys(formData);
+  const currentKey = formData[activeTab] ? activeTab : tabKeys[0] || 'summer';
+  const currentConfig = formData[currentKey] || DEFAULT_CHAPTERS.summer;
+  const currentTheme = getChapterTheme(currentConfig, currentKey);
+  const isDefaultCategory = ['summer', 'winter', 'training'].includes(currentKey);
 
-  const handleFieldChange = (field: keyof typeof currentConfig, value: string) => {
+  const handleFieldChange = (field: keyof typeof currentConfig, value: unknown) => {
     setFormData(prev => ({
       ...prev,
-      [activeTab]: {
-        ...prev[activeTab],
+      [currentKey]: {
+        ...prev[currentKey],
         [field]: value,
       }
     }));
@@ -48,15 +71,33 @@ export function ChapterSettingsModal({
 
   const handleResetToDefault = () => {
     playPopSound();
-    setFormData(prev => ({
-      ...prev,
-      [activeTab]: { ...DEFAULT_CHAPTERS[activeTab] }
-    }));
+    if (DEFAULT_CHAPTERS[currentKey]) {
+      setFormData(prev => ({
+        ...prev,
+        [currentKey]: { ...DEFAULT_CHAPTERS[currentKey] }
+      }));
+    }
+  };
+
+  const handleDeleteCategory = (keyToDelete: string) => {
+    playPopSound();
+    if (confirm(`'${formData[keyToDelete]?.name}' 카테고리를 삭제하시겠습니까?`)) {
+      const next = { ...formData };
+      delete next[keyToDelete];
+      setFormData(next);
+      const remainingKeys = Object.keys(next);
+      if (remainingKeys.length > 0) {
+        setActiveTab(remainingKeys[0]);
+      }
+    }
   };
 
   const handleResetAllToDefault = () => {
     playPopSound();
-    setFormData(DEFAULT_CHAPTERS);
+    if (confirm('모든 카테고리를 기본값(여름방학, 겨울방학, 교사연수)으로 초기화하시겠습니까?')) {
+      setFormData(DEFAULT_CHAPTERS);
+      setActiveTab('summer');
+    }
   };
 
   const handleSave = () => {
@@ -83,10 +124,10 @@ export function ChapterSettingsModal({
             </div>
             <div>
               <h2 className="text-xl sm:text-2xl font-black text-[#0369A1] tracking-tight">
-                챕터 제목 및 문구 직접 설정
+                카테고리 & 챕터 상세 설정
               </h2>
               <p className="text-xs font-bold text-[#0369A1]/70">
-                여름방학, 겨울방학, 교사연수의 탭 이름과 퀴즈 제목을 직접 타이핑하여 변경하세요
+                각 활동 카테고리의 탭 이름, 퀴즈 대제목, 배지 및 소개 문구를 직접 수정하세요
               </p>
             </div>
           </div>
@@ -102,199 +143,223 @@ export function ChapterSettingsModal({
           </button>
         </div>
 
-        {/* Tab selection */}
-        <div className="bg-[#F0F9FF] border-b-2 border-[#BAE6FD] px-5 sm:px-8 py-3 flex items-center gap-2 overflow-x-auto">
-          <button
-            type="button"
-            onClick={() => {
-              playPopSound();
-              setActiveTab('summer');
-            }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'summer'
-                ? 'bg-amber-400 text-amber-950 shadow-[0_3px_0_0_#D97706]'
-                : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
-            }`}
-          >
-            <Sun className="w-4 h-4 text-amber-600" />
-            <span>{formData.summer.name} {formData.summer.emoji}</span>
-          </button>
+        {/* Tab selection (Scrollable with Add Category button) */}
+        <div className="bg-[#F0F9FF] border-b-2 border-[#BAE6FD] px-4 sm:px-6 py-2.5 flex items-center gap-2 overflow-x-auto">
+          {tabKeys.map((key) => {
+            const item = formData[key];
+            if (!item) return null;
+            const isTabActive = currentKey === key;
+            const theme = getChapterTheme(item, key);
 
-          <button
-            type="button"
-            onClick={() => {
-              playPopSound();
-              setActiveTab('winter');
-            }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'winter'
-                ? 'bg-sky-500 text-white shadow-[0_3px_0_0_#0284C7]'
-                : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
-            }`}
-          >
-            <Snowflake className="w-4 h-4 text-sky-500" />
-            <span>{formData.winter.name} {formData.winter.emoji}</span>
-          </button>
+            return (
+              <button
+                key={key}
+                type="button"
+                onClick={() => {
+                  playPopSound();
+                  setActiveTab(key);
+                }}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                  isTabActive
+                    ? theme.tabActive
+                    : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
+                }`}
+              >
+                <span>{item.emoji}</span>
+                <span>{item.name}</span>
+              </button>
+            );
+          })}
 
-          <button
-            type="button"
-            onClick={() => {
-              playPopSound();
-              setActiveTab('training');
-            }}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === 'training'
-                ? 'bg-[#2A8255] text-white shadow-[0_3px_0_0_#1B5D3A]'
-                : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
-            }`}
-          >
-            <GraduationCap className="w-4 h-4 text-emerald-600" />
-            <span>{formData.training.name} {formData.training.emoji}</span>
-          </button>
+          {/* Add Category Tab Button */}
+          {onOpenCreateCategory && (
+            <button
+              type="button"
+              onClick={() => {
+                playPopSound();
+                onOpenCreateCategory();
+              }}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 font-black text-xs transition-colors shrink-0 cursor-pointer"
+              title="새 카테고리 추가하기"
+            >
+              <Plus className="w-3.5 h-3.5 text-amber-800" />
+              <span>새 카테고리</span>
+            </button>
+          )}
         </div>
 
         {/* Modal Body / Inputs */}
         <div className="p-5 sm:p-8 space-y-6 overflow-y-auto flex-1">
           {/* Quick Info Badge */}
-          <div className={`p-4 rounded-2xl border-2 flex items-center justify-between gap-3 ${
-            activeTab === 'training'
-              ? 'bg-[#EBF6F0] border-[#8ED1A8] text-[#1E6D44]'
-              : activeTab === 'winter'
-              ? 'bg-[#EFF6FF] border-[#BFDBFE] text-sky-900'
-              : 'bg-[#FEFCE8] border-[#FEF08A] text-amber-900'
-          }`}>
+          <div className={`p-4 rounded-2xl border-2 flex flex-wrap items-center justify-between gap-3 ${currentTheme.headerBg} ${currentTheme.headerBorder}`}>
             <div className="flex items-center gap-2">
-              <Sparkles className="w-4 h-4 shrink-0" />
-              <span className="text-xs sm:text-sm font-bold">
-                현재 <strong>[{currentConfig.name}]</strong> 챕터를 수정하고 있습니다. 상단 탭에서 다른 챕터로 전환할 수 있습니다.
+              <span className="text-xl">{currentConfig.emoji}</span>
+              <span className="text-xs sm:text-sm font-bold text-slate-800">
+                현재 <strong>[{currentConfig.name}]</strong> 카테고리를 편집하고 있습니다.
               </span>
             </div>
-            <button
-              type="button"
-              onClick={handleResetToDefault}
-              className="text-xs font-black underline hover:opacity-80 shrink-0 cursor-pointer"
-            >
-              이 챕터 기본값 복원
-            </button>
+            <div className="flex items-center gap-2">
+              {isDefaultCategory ? (
+                <button
+                  type="button"
+                  onClick={handleResetToDefault}
+                  className="text-xs font-black underline text-slate-600 hover:text-slate-900 cursor-pointer"
+                >
+                  기본값 복원
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleDeleteCategory(currentKey)}
+                  className="text-xs font-black text-rose-600 hover:text-rose-800 flex items-center gap-1 bg-white px-2.5 py-1 rounded-lg border border-rose-300 cursor-pointer"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  <span>이 카테고리 삭제</span>
+                </button>
+              )}
+            </div>
           </div>
 
+          {/* Form Fields */}
           <div className="space-y-4">
-            {/* Chapter Tab Name and Emoji */}
+            {/* Tab Name & Emoji */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="sm:col-span-2 space-y-1.5">
-                <label className="block text-xs sm:text-sm font-black text-slate-700">
-                  1. 탭 표시 이름 (상단 전환 탭)
+                <label className="text-xs font-black text-slate-700">
+                  카테고리 탭 표시 이름
                 </label>
                 <input
                   type="text"
                   value={currentConfig.name}
                   onChange={(e) => handleFieldChange('name', e.target.value)}
-                  placeholder="예: 여름방학, 신학기 첫날, 교사 연수"
-                  className="w-full px-4 py-2.5 rounded-xl border-2 border-slate-300 focus:border-[#0EA5E9] focus:outline-hidden font-bold text-sm bg-white"
-                  maxLength={20}
+                  className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border-2 border-slate-300 text-sm font-black text-slate-800 focus:outline-hidden focus:border-sky-500 focus:bg-white transition-colors"
+                  placeholder="예: 여름방학, 주말 지낸 이야기"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-xs sm:text-sm font-black text-slate-700">
-                  2. 대표 이모지
+                <label className="text-xs font-black text-slate-700">
+                  대표 이모지
                 </label>
-                <input
-                  type="text"
-                  value={currentConfig.emoji}
-                  onChange={(e) => handleFieldChange('emoji', e.target.value)}
-                  placeholder="예: 🏖️, ⛄, 🎾"
-                  className="w-full px-4 py-2.5 rounded-xl border-2 border-slate-300 focus:border-[#0EA5E9] focus:outline-hidden font-bold text-sm text-center bg-white"
-                  maxLength={5}
-                />
+                <div className="flex gap-1.5">
+                  <input
+                    type="text"
+                    maxLength={4}
+                    value={currentConfig.emoji}
+                    onChange={(e) => handleFieldChange('emoji', e.target.value)}
+                    className="w-full px-3 py-2.5 rounded-xl bg-slate-50 border-2 border-slate-300 text-center text-lg font-black text-slate-800 focus:outline-hidden focus:border-sky-500 focus:bg-white transition-colors"
+                  />
+                </div>
               </div>
             </div>
 
             {/* Emoji Quick Picker */}
             <div className="space-y-1">
-              <span className="text-[11px] font-bold text-slate-500">추천 이모지 클릭 선택:</span>
+              <span className="text-[11px] font-bold text-slate-500">추천 이모지:</span>
               <div className="flex flex-wrap gap-1.5">
-                {EMOJI_SUGGESTIONS.map((em) => (
+                {EMOJI_SUGGESTIONS.map((emoji, i) => (
                   <button
-                    key={em}
+                    key={i}
                     type="button"
                     onClick={() => {
                       playPopSound();
-                      handleFieldChange('emoji', em);
+                      handleFieldChange('emoji', emoji);
                     }}
-                    className={`w-8 h-8 rounded-lg text-base flex items-center justify-center border transition-all cursor-pointer ${
-                      currentConfig.emoji === em 
-                        ? 'bg-amber-100 border-amber-400 scale-110 shadow-xs' 
-                        : 'bg-slate-50 hover:bg-slate-100 border-slate-200'
+                    className={`w-8 h-8 rounded-lg text-sm flex items-center justify-center border transition-all cursor-pointer ${
+                      currentConfig.emoji === emoji
+                        ? 'bg-amber-100 border-amber-400 scale-110 shadow-xs'
+                        : 'bg-slate-50 border-slate-200 hover:bg-slate-100'
                     }`}
                   >
-                    {em}
+                    {emoji}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Main Quiz Title */}
+            {/* Quiz Main Title */}
             <div className="space-y-1.5">
-              <label className="block text-xs sm:text-sm font-black text-slate-700">
-                3. 퀴즈 메인 대제목 (대기실 / 퀴즈 메인 화면에 크게 표시)
+              <label className="text-xs font-black text-slate-700">
+                퀴즈 메인 타이틀 (상단 큰 제목)
               </label>
               <input
                 type="text"
                 value={currentConfig.title}
                 onChange={(e) => handleFieldChange('title', e.target.value)}
-                placeholder="예: 내 방학을 맞춰봐!, 선생님의 경험을 맞춰봐!"
-                className="w-full px-4 py-2.5 rounded-xl border-2 border-slate-300 focus:border-[#0EA5E9] focus:outline-hidden font-bold text-sm bg-white"
-                maxLength={40}
+                className="w-full px-4 py-2.5 rounded-xl bg-slate-50 border-2 border-slate-300 text-sm font-bold text-slate-800 focus:outline-hidden focus:border-sky-500 focus:bg-white transition-colors"
+                placeholder="예: 내 방학을 맞춰봐!, 나의 주말을 맞춰봐!"
               />
             </div>
 
-            {/* Badge Label */}
-            <div className="space-y-1.5">
-              <label className="block text-xs sm:text-sm font-black text-slate-700">
-                4. 상단 뱃지 문구 (소제목 라벨)
-              </label>
-              <input
-                type="text"
-                value={currentConfig.badge}
-                onChange={(e) => handleFieldChange('badge', e.target.value)}
-                placeholder="예: 스피드 퀴즈, 교사 연수 윔블던 그린 🎾"
-                className="w-full px-4 py-2.5 rounded-xl border-2 border-slate-300 focus:border-[#0EA5E9] focus:outline-hidden font-bold text-sm bg-white"
-                maxLength={30}
-              />
+            {/* Badge & Description */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <label className="text-xs font-black text-slate-700">
+                  상단 배지 문구
+                </label>
+                <input
+                  type="text"
+                  value={currentConfig.badge}
+                  onChange={(e) => handleFieldChange('badge', e.target.value)}
+                  className="w-full px-4 py-2 rounded-xl bg-slate-50 border-2 border-slate-300 text-xs font-bold text-slate-800 focus:outline-hidden focus:border-sky-500 focus:bg-white"
+                  placeholder="예: 스피드 퀴즈, 주말 이야기 🎈"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-black text-slate-700">
+                  설명 문구
+                </label>
+                <input
+                  type="text"
+                  value={currentConfig.description}
+                  onChange={(e) => handleFieldChange('description', e.target.value)}
+                  className="w-full px-4 py-2 rounded-xl bg-slate-50 border-2 border-slate-300 text-xs font-bold text-slate-800 focus:outline-hidden focus:border-sky-500 focus:bg-white"
+                  placeholder="예: 초·중·고등학생을 위한 키워드 공유 퀴즈"
+                />
+              </div>
             </div>
 
-            {/* Description Subtitle */}
+            {/* Theme Color Picker */}
             <div className="space-y-1.5">
-              <label className="block text-xs sm:text-sm font-black text-slate-700">
-                5. 소개 및 안내 문구
+              <label className="text-xs font-black text-slate-700">
+                테마 색상 스타일
               </label>
-              <textarea
-                value={currentConfig.description}
-                onChange={(e) => handleFieldChange('description', e.target.value)}
-                placeholder="초·중·고등학생 및 교사를 위한 키워드 공유 퀴즈 안내글"
-                rows={2}
-                className="w-full px-4 py-2 rounded-xl border-2 border-slate-300 focus:border-[#0EA5E9] focus:outline-hidden font-medium text-xs sm:text-sm bg-white resize-none"
-                maxLength={100}
-              />
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {THEME_OPTIONS.map((opt) => (
+                  <button
+                    key={opt.key}
+                    type="button"
+                    onClick={() => handleFieldChange('themeColor', opt.key)}
+                    className={`p-2 rounded-xl border-2 flex items-center gap-2 text-xs font-bold transition-all cursor-pointer ${
+                      currentConfig.themeColor === opt.key
+                        ? 'border-slate-800 bg-slate-100 shadow-xs'
+                        : 'border-slate-200 hover:border-slate-300 bg-white'
+                    }`}
+                  >
+                    <span className={`w-3.5 h-3.5 rounded-full shrink-0 ${opt.bg}`} />
+                    <span className="truncate">{opt.label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* Live Preview Box */}
-          <div className="p-4 rounded-2xl bg-slate-50 border-2 border-dashed border-slate-300 space-y-2">
-            <span className="text-xs font-black text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
-              실시간 미리보기
+          {/* Real-time Preview */}
+          <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200 space-y-2">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+              실제 화면 적용 미리보기
             </span>
-            <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-white border-2 border-slate-200 flex items-center justify-center text-2xl shadow-xs">
+                {currentConfig.emoji}
+              </div>
               <div>
                 <div className="flex items-center gap-2">
                   <span className="font-black text-base sm:text-lg text-[#0369A1]">
                     {currentConfig.title || '제목을 입력하세요'}
                   </span>
-                  <span className={`px-2 py-0.5 rounded-full text-white text-[10px] font-bold ${
-                    activeTab === 'training' ? 'bg-[#2A8255]' : activeTab === 'winter' ? 'bg-sky-500' : 'bg-[#0EA5E9]'
-                  }`}>
+                  <span className="px-2 py-0.5 rounded-full text-white text-[10px] font-bold bg-[#0EA5E9]">
                     {currentConfig.badge || '뱃지'}
                   </span>
                 </div>
@@ -302,7 +367,7 @@ export function ChapterSettingsModal({
                   {currentConfig.description || '소개 문구'}
                 </p>
               </div>
-              <div className="shrink-0 px-3 py-1 rounded-xl text-xs font-black bg-slate-100 text-slate-700 border border-slate-300">
+              <div className="ml-auto shrink-0 px-3 py-1 rounded-xl text-xs font-black bg-slate-100 text-slate-700 border border-slate-300">
                 탭: {currentConfig.name} {currentConfig.emoji}
               </div>
             </div>
@@ -317,7 +382,7 @@ export function ChapterSettingsModal({
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 cursor-pointer"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            <span>모든 챕터 기본값 초기화</span>
+            <span>기본 카테고리로 초기화</span>
           </button>
 
           <div className="flex items-center gap-2">

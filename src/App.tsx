@@ -9,15 +9,18 @@ import {
   subscribeToQuizChanges, 
   isSupabaseConfigured 
 } from './lib/supabase';
-import { QuizResponse, AppRole, VacationSeason, ChaptersSettings, DEFAULT_CHAPTERS } from './types';
+import { QuizResponse, AppRole, VacationSeason, ChaptersSettings, ChapterConfig, DEFAULT_CHAPTERS } from './types';
 import { TeacherLobby } from './components/TeacherLobby';
 import { TeacherQuiz } from './components/TeacherQuiz';
 import { StudentForm } from './components/StudentForm';
 import { SupabaseGuideModal } from './components/SupabaseGuideModal';
 import { ChapterSettingsModal } from './components/ChapterSettingsModal';
+import { CreateCategoryModal } from './components/CreateCategoryModal';
+import { CategoryDropdown } from './components/CategoryDropdown';
 import { SnowEffect } from './components/SnowEffect';
 import { toggleMute, getMuteState } from './lib/sound';
-import { Users, Presentation, Database, HelpCircle, Snowflake, Sun, GraduationCap, Settings } from 'lucide-react';
+import { getChapterTheme } from './lib/theme';
+import { Users, Presentation, Database, HelpCircle, Settings } from 'lucide-react';
 
 const SEASON_STORAGE_KEY = 'vacation_quiz_season_v1';
 const KEYWORD_COUNT_STORAGE_KEY = 'vacation_quiz_keyword_count_v1';
@@ -34,23 +37,23 @@ export default function App() {
     return 'teacher';
   });
 
-  // Detect season/mode: summer | winter | training
+  // Detect season/mode: summer | winter | training | weekend | holiday | custom
   const [season, setSeason] = useState<VacationSeason>(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const querySeason = params.get('season') || params.get('mode');
-      if (querySeason === 'winter' || querySeason === 'summer' || querySeason === 'training') {
+      if (querySeason) {
         return querySeason;
       }
       const saved = localStorage.getItem(SEASON_STORAGE_KEY);
-      if (saved === 'winter' || saved === 'summer' || saved === 'training') {
+      if (saved) {
         return saved as VacationSeason;
       }
     }
     return 'summer';
   });
 
-  // Custom chapters configuration (여름방학, 겨울방학, 교사연수 등 챕터 탭 제목 및 퀴즈 대제목 직접 타이핑 수정)
+  // Custom chapters configuration (여름방학, 겨울방학, 교사연수, 주말, 연휴 등 챕터 및 카테고리 관리)
   const [chapters, setChapters] = useState<ChaptersSettings>(() => {
     if (typeof window !== 'undefined') {
       try {
@@ -58,9 +61,8 @@ export default function App() {
         if (saved) {
           const parsed = JSON.parse(saved);
           return {
-            summer: { ...DEFAULT_CHAPTERS.summer, ...(parsed.summer || {}) },
-            winter: { ...DEFAULT_CHAPTERS.winter, ...(parsed.winter || {}) },
-            training: { ...DEFAULT_CHAPTERS.training, ...(parsed.training || {}) },
+            ...DEFAULT_CHAPTERS,
+            ...parsed,
           };
         }
       } catch {
@@ -71,6 +73,7 @@ export default function App() {
   });
 
   const [isChapterSettingsOpen, setIsChapterSettingsOpen] = useState(false);
+  const [isCreateCategoryOpen, setIsCreateCategoryOpen] = useState(false);
 
   // Adjustable number of keywords/questions (문항 수 조절: 기본 3~4개, 1~6개 조절 가능)
   const [keywordCount, setKeywordCount] = useState<number>(() => {
@@ -99,7 +102,14 @@ export default function App() {
 
   const isWinter = season === 'winter';
   const isTraining = season === 'training';
-  const currentChapter = chapters[season] || DEFAULT_CHAPTERS[season];
+  const currentChapter = chapters[season] || DEFAULT_CHAPTERS[season] || {
+    name: season,
+    emoji: '✨',
+    title: '내 방학을 맞춰봐!',
+    badge: '스피드 퀴즈',
+    description: '키워드 공유 퀴즈 활동',
+  };
+  const currentTheme = getChapterTheme(currentChapter, season);
 
   // Category isolation: Filter responses specifically for the currently active chapter/season
   const filteredResponses = useMemo(() => {
@@ -108,16 +118,10 @@ export default function App() {
 
   // Response count per season for visual clarity in category tabs
   const countsBySeason = useMemo(() => {
-    const counts: Record<VacationSeason, number> = {
-      summer: 0,
-      winter: 0,
-      training: 0,
-    };
+    const counts: Record<string, number> = {};
     for (const r of responses) {
       const s = r.season || 'summer';
-      if (counts[s] !== undefined) {
-        counts[s]++;
-      }
+      counts[s] = (counts[s] || 0) + 1;
     }
     return counts;
   }, [responses]);
@@ -129,6 +133,15 @@ export default function App() {
     } catch {
       // ignore
     }
+  };
+
+  const handleCreateCategory = (newCategory: ChapterConfig, key: string) => {
+    const updated = {
+      ...chapters,
+      [key]: newCategory,
+    };
+    handleSaveChapters(updated);
+    handleSeasonChange(key);
   };
 
   // Load responses from Supabase (or local storage fallback)
@@ -145,6 +158,19 @@ export default function App() {
 
   useEffect(() => {
     refreshResponses();
+
+    // Ensure season and role sync from current URL search params
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const querySeason = params.get('season') || params.get('mode');
+      if (querySeason && querySeason !== season) {
+        setSeason(querySeason);
+      }
+      const queryRole = params.get('role');
+      if ((queryRole === 'student' || queryRole === 'teacher') && queryRole !== role) {
+        setRole(queryRole);
+      }
+    }
 
     // Subscribe to Realtime updates (Supabase Realtime + BroadcastChannel + window storage)
     const unsubscribe = subscribeToQuizChanges(() => {
@@ -166,12 +192,8 @@ export default function App() {
         url.searchParams.delete('role');
       }
 
-      if (newSeason === 'winter') {
-        url.searchParams.set('season', 'winter');
-      } else if (newSeason === 'training') {
-        url.searchParams.set('season', 'training');
-      } else {
-        url.searchParams.delete('season');
+      if (newSeason) {
+        url.searchParams.set('season', newSeason);
       }
       window.history.pushState({}, '', url.toString());
     }
@@ -218,13 +240,7 @@ export default function App() {
 
       {/* Top Navigation Bar */}
       <header 
-        className={`sticky top-0 z-40 border-b-4 transition-colors duration-300 shadow-xs ${
-          isTraining 
-            ? 'bg-[#F2FBF5] border-[#B7E2C9]' 
-            : isWinter 
-            ? 'bg-[#EFF6FF] border-[#BFDBFE]' 
-            : 'bg-[#FEF9C3] border-[#FEF08A]'
-        }`}
+        className={`sticky top-0 z-40 border-b-4 transition-colors duration-300 shadow-xs ${currentTheme.headerBg} ${currentTheme.headerBorder}`}
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 min-h-20 py-2 flex flex-wrap items-center justify-between gap-4">
           {/* Logo */}
@@ -235,13 +251,7 @@ export default function App() {
             className="flex items-center gap-3 cursor-pointer select-none"
           >
             <div 
-              className={`w-12 h-12 rounded-2xl text-white flex items-center justify-center font-black border-2 border-white transition-all text-2xl ${
-                isTraining
-                  ? 'bg-[#2A8255] shadow-[0_4px_0_0_#1B5D3A]'
-                  : isWinter
-                  ? 'bg-sky-500 shadow-[0_4px_0_0_#0284C7]'
-                  : 'bg-[#0EA5E9] shadow-[0_4px_0_0_#0284C7]'
-              }`}
+              className={`w-12 h-12 rounded-2xl text-white flex items-center justify-center font-black border-2 border-white transition-all text-2xl ${currentTheme.buttonActive}`}
             >
               {currentChapter.emoji}
             </div>
@@ -250,9 +260,7 @@ export default function App() {
                 <span className="font-black text-xl sm:text-2xl text-[#0369A1] tracking-tight">
                   {currentChapter.title}
                 </span>
-                <span className={`hidden sm:inline-block px-3 py-0.5 rounded-full text-white text-xs font-bold shadow-xs ${
-                  isTraining ? 'bg-[#2A8255]' : isWinter ? 'bg-sky-500' : 'bg-[#0EA5E9]'
-                }`}>
+                <span className={`hidden sm:inline-block px-3 py-0.5 rounded-full text-white text-xs font-bold shadow-xs ${currentTheme.buttonActive}`}>
                   {currentChapter.badge}
                 </span>
               </div>
@@ -262,85 +270,22 @@ export default function App() {
             </div>
           </div>
 
-          {/* Center: Season/Mode Switcher & Role Switcher Tabs */}
+          {/* Center: Collapsible Category Selector & Role Switcher */}
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-            {/* Mode Switcher (여름방학 🏖️ / 겨울방학 ⛄ / 교사 연수 🎓) */}
-            <div 
-              id="season-mode-toggle"
-              className="flex items-center bg-white/95 p-1 rounded-2xl border-2 shadow-xs transition-colors"
-              style={{ borderColor: isTraining ? '#8ED1A8' : isWinter ? '#93C5FD' : '#FEF08A' }}
-            >
-              <button
-                id="season-tab-summer"
-                type="button"
-                onClick={() => handleSeasonChange('summer')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
-                  season === 'summer'
-                    ? 'bg-amber-400 text-amber-950 shadow-[0_2px_0_0_#D97706]'
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-                title={`${chapters.summer.name} 모드로 전환 (${countsBySeason.summer}명 응답)`}
-              >
-                <Sun className="w-3.5 h-3.5 text-amber-600" />
-                <span>{chapters.summer.name} {chapters.summer.emoji}</span>
-                {countsBySeason.summer > 0 && (
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ml-0.5 ${
-                    season === 'summer' ? 'bg-amber-950/20 text-amber-950' : 'bg-slate-100 text-slate-600'
-                  }`}>
-                    {countsBySeason.summer}
-                  </span>
-                )}
-              </button>
-
-              <button
-                id="season-tab-winter"
-                type="button"
-                onClick={() => handleSeasonChange('winter')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
-                  season === 'winter'
-                    ? 'bg-sky-500 text-white shadow-[0_2px_0_0_#0284C7]'
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-                title={`${chapters.winter.name} 모드로 전환 (${countsBySeason.winter}명 응답)`}
-              >
-                <Snowflake className="w-3.5 h-3.5 text-white" />
-                <span>{chapters.winter.name} {chapters.winter.emoji}</span>
-                {countsBySeason.winter > 0 && (
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ml-0.5 ${
-                    season === 'winter' ? 'bg-white/30 text-white' : 'bg-slate-100 text-slate-600'
-                  }`}>
-                    {countsBySeason.winter}
-                  </span>
-                )}
-              </button>
-
-              <button
-                id="season-tab-training"
-                type="button"
-                onClick={() => handleSeasonChange('training')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
-                  season === 'training'
-                    ? 'bg-[#2A8255] text-white shadow-[0_2px_0_0_#1B5D3A]'
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-                title={`${chapters.training.name} 모드로 전환 (${countsBySeason.training}명 응답)`}
-              >
-                <GraduationCap className="w-4 h-4 text-emerald-200" />
-                <span>{chapters.training.name} {chapters.training.emoji}</span>
-                {countsBySeason.training > 0 && (
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ml-0.5 ${
-                    season === 'training' ? 'bg-white/30 text-white' : 'bg-slate-100 text-slate-600'
-                  }`}>
-                    {countsBySeason.training}
-                  </span>
-                )}
-              </button>
-            </div>
+            {/* Collapsible Category Selector (클릭하면 아래가 펼쳐지는 구조) */}
+            <CategoryDropdown
+              chapters={chapters}
+              currentSeason={season}
+              onSelectSeason={handleSeasonChange}
+              countsBySeason={countsBySeason}
+              onOpenCreateModal={() => setIsCreateCategoryOpen(true)}
+              onOpenSettingsModal={() => setIsChapterSettingsOpen(true)}
+            />
 
             {/* Role Switcher Tabs */}
             <div 
               className="flex items-center bg-white/95 p-1 rounded-2xl border-2 shadow-xs transition-colors"
-              style={{ borderColor: isTraining ? '#8ED1A8' : isWinter ? '#93C5FD' : '#FEF08A' }}
+              style={{ borderColor: currentTheme.accentHex }}
             >
               <button
                 id="role-tab-teacher"
@@ -348,7 +293,7 @@ export default function App() {
                 onClick={() => handleRoleChange('teacher')}
                 className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
                   role === 'teacher'
-                    ? (isTraining ? 'bg-[#2A8255] text-white shadow-[0_3px_0_0_#1B5D3A]' : 'bg-[#0EA5E9] text-white shadow-[0_3px_0_0_#0284C7]')
+                    ? currentTheme.buttonActive
                     : 'text-[#0369A1] hover:bg-slate-100'
                 }`}
               >
@@ -361,7 +306,7 @@ export default function App() {
                 onClick={() => handleRoleChange('student')}
                 className={`flex items-center gap-1.5 px-3 sm:px-4 py-1.5 sm:py-2 rounded-xl font-black text-xs sm:text-sm transition-all cursor-pointer ${
                   role === 'student'
-                    ? (isTraining ? 'bg-[#2A8255] text-white shadow-[0_3px_0_0_#1B5D3A]' : 'bg-[#0EA5E9] text-white shadow-[0_3px_0_0_#0284C7]')
+                    ? currentTheme.buttonActive
                     : 'text-[#0369A1] hover:bg-slate-100'
                 }`}
               >
@@ -430,6 +375,8 @@ export default function App() {
         ) : teacherScreen === 'lobby' ? (
           <TeacherLobby
             responses={filteredResponses}
+            allResponses={responses}
+            onRefresh={refreshResponses}
             onStartQuiz={() => setTeacherScreen('quiz')}
             onOpenSupabaseGuide={() => setIsGuideOpen(true)}
             onSwitchToStudent={() => handleRoleChange('student')}
@@ -475,6 +422,14 @@ export default function App() {
         onClose={() => setIsGuideOpen(false)}
       />
 
+      {/* Create New Activity Category Modal */}
+      <CreateCategoryModal
+        isOpen={isCreateCategoryOpen}
+        onClose={() => setIsCreateCategoryOpen(false)}
+        onCreate={handleCreateCategory}
+        existingKeys={Object.keys(chapters)}
+      />
+
       {/* Chapter Titles & Settings Customization Modal */}
       <ChapterSettingsModal
         isOpen={isChapterSettingsOpen}
@@ -482,6 +437,10 @@ export default function App() {
         chapters={chapters}
         onSave={handleSaveChapters}
         activeMode={season}
+        onOpenCreateCategory={() => {
+          setIsChapterSettingsOpen(false);
+          setIsCreateCategoryOpen(true);
+        }}
       />
     </div>
   );
