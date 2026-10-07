@@ -157,6 +157,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    document.title = '스피드 퀴즈';
     refreshResponses();
 
     // Ensure season and role sync from current URL search params
