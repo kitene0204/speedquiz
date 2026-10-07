@@ -60,10 +60,14 @@ export default function App() {
         const saved = localStorage.getItem(CHAPTERS_STORAGE_KEY);
         if (saved) {
           const parsed = JSON.parse(saved);
-          return {
+          const merged = {
             ...DEFAULT_CHAPTERS,
             ...parsed,
           };
+          if (merged.training && (merged.training.badge?.includes('윔블던') || merged.training.badge === '교사 연수 윔블던 그린 🎾')) {
+            merged.training.badge = '';
+          }
+          return merged;
         }
       } catch {
         // ignore
@@ -102,13 +106,19 @@ export default function App() {
 
   const isWinter = season === 'winter';
   const isTraining = season === 'training';
-  const currentChapter = chapters[season] || DEFAULT_CHAPTERS[season] || {
-    name: season,
-    emoji: '✨',
-    title: '내 방학을 맞춰봐!',
-    badge: '스피드 퀴즈',
-    description: '키워드 공유 퀴즈 활동',
-  };
+  const currentChapter = useMemo(() => {
+    const raw = chapters[season] || DEFAULT_CHAPTERS[season] || {
+      name: season,
+      emoji: '✨',
+      title: '내 방학을 맞춰봐!',
+      badge: '',
+      description: '키워드 공유 퀴즈 활동',
+    };
+    if (raw.badge?.includes('윔블던')) {
+      return { ...raw, badge: '' };
+    }
+    return raw;
+  }, [chapters, season]);
   const currentTheme = getChapterTheme(currentChapter, season);
 
   // Category isolation: Filter responses specifically for the currently active chapter/season
@@ -278,9 +288,11 @@ export default function App() {
                 <span className="font-black text-xl sm:text-2xl text-[#0369A1] tracking-tight group-hover:text-[#0284C7] transition-colors">
                   {currentChapter.title}
                 </span>
-                <span className={`hidden sm:inline-block px-3 py-0.5 rounded-full text-white text-xs font-bold shadow-xs ${currentTheme.buttonActive}`}>
-                  {currentChapter.badge}
-                </span>
+                {Boolean(currentChapter.badge) && (
+                  <span className={`hidden sm:inline-block px-3 py-0.5 rounded-full text-white text-xs font-bold shadow-xs ${currentTheme.buttonActive}`}>
+                    {currentChapter.badge}
+                  </span>
+                )}
               </div>
               <p className="text-xs font-bold text-[#0369A1]/70 hidden md:block">
                 {currentChapter.description}

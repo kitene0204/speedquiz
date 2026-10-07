@@ -21,7 +21,7 @@ const THEME_OPTIONS: Array<{ key: CategoryThemeColor; label: string; bg: string 
   { key: 'indigo', label: '인디고 (체험학습)', bg: 'bg-indigo-600' },
   { key: 'purple', label: '퍼플 (자기소개)', bg: 'bg-purple-600' },
   { key: 'sky', label: '스카이블루', bg: 'bg-sky-500' },
-  { key: 'emerald', label: '윔블던그린', bg: 'bg-[#2A8255]' },
+  { key: 'emerald', label: '에메랄드 그린', bg: 'bg-[#2A8255]' },
   { key: 'amber', label: '골드옐로우', bg: 'bg-amber-400' },
   { key: 'teal', label: '민트티얼', bg: 'bg-teal-600' },
 ];

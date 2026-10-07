@@ -56,7 +56,7 @@ export const DEFAULT_CHAPTERS: ChaptersSettings = {
     name: '교사 연수',
     emoji: '🎓',
     title: '선생님의 경험을 맞춰봐!',
-    badge: '교사 연수 윔블던 그린 🎾',
+    badge: '',
     description: '교사 연수 동기유발 & 아이스브레이킹을 위한 경험 키워드 공유 퀴즈',
     themeColor: 'emerald',
   },
